@@ -1,0 +1,21 @@
+{
+  "name": "fct-junior",
+  "private": true,
+  "version": "0.1.0",
+  "description": "福泉堂初級團每週回顧（加密靜態網站）",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify": "node scripts/verify-published.mjs",
+    "check-privacy": "node scripts/check-repo-privacy.mjs",
+    "test": "node scripts/test-fail-closed.mjs && node scripts/test-compress.mjs && node scripts/test-roundtrip.mjs",
+    "seed-demo": "node scripts/seed-demo.mjs"
+  },
+  "dependencies": {
+    "sharp": "0.35.5",
+    "staticrypt": "3.5.4"
+  }
+}

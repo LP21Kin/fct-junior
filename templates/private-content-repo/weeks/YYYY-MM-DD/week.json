@@ -1,0 +1,15 @@
+{
+  "date": "YYYY-MM-DD",
+  "title": "喺度寫今次主題",
+  "themeColor": "#A9D4F5",
+  "memoryVerse": "喺度寫金句",
+  "verseRef": "經文出處",
+  "points": [
+    "重點一",
+    "重點二"
+  ],
+  "prayers": [
+    "代禱一"
+  ],
+  "photos": []
+}

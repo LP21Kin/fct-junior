@@ -1,0 +1,83 @@
+name: 發佈加密網站
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 取出程式
+        uses: actions/checkout@v4
+
+      - name: 設定 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝
+        run: npm ci
+
+      - name: 確認公開專案沒有相片
+        run: npm run check-privacy
+
+      - name: 跑測試
+        run: npm test
+
+      - name: 確認有密碼先至繼續
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: |
+          if [ -z "$SITE_PASSWORD" ]; then
+            echo "::error::未設定 SITE_PASSWORD。為咗保護內容，今次不會發佈任何檔案。"
+            exit 1
+          fi
+
+      - name: 壓縮、嵌圖、加密
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          CONTENT_REPO: ${{ secrets.CONTENT_REPO }}
+          CONTENT_READ_TOKEN: ${{ secrets.CONTENT_READ_TOKEN }}
+        run: npm run build
+
+      - name: 檢查輸出沒有明文或圖片
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: node scripts/verify-published.mjs
+
+      - name: 確認沒有圖片檔
+        run: |
+          if find dist -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.svg' -o -iname '*.heic' -o -iname '*.heif' \) | grep -q .; then
+            echo "::error::輸出含有圖片檔，已停止，不會發佈。"
+            exit 1
+          fi
+          test -f dist/index.html
+
+      - name: 上傳網頁
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 發佈到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
