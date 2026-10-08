@@ -138,6 +138,16 @@ await mkdir(path.join(buildDir, "plaintext"), { recursive: true });
 const plaintextPath = path.join(buildDir, "plaintext", "index.html");
 await writeFile(plaintextPath, rendered.html, "utf8");
 await writeFile(path.join(buildDir, "check-strings.json"), `${JSON.stringify(rendered.strings, null, 2)}\n`, "utf8");
+const coverArt = await readFile(path.join(root, "src", "cover-art.svg"), "utf8");
+const passwordTemplate = (await readFile(path.join(root, "src", "password_template.html"), "utf8")).replace(
+  "<!--COVER_ART-->",
+  coverArt.trim(),
+);
+if (!passwordTemplate.includes('class="cover-art"')) {
+  fail("密碼頁未有封面圖。今次不會發佈。");
+}
+const passwordTemplatePath = path.join(buildDir, "password_template.html");
+await writeFile(passwordTemplatePath, passwordTemplate, "utf8");
 
 const saltFile = JSON.parse(await readFile(path.join(root, ".staticrypt.json"), "utf8"));
 if (!saltFile.salt || !/^[0-9a-fA-F]{32}$/.test(saltFile.salt)) {
@@ -155,7 +165,7 @@ const encrypt = await run(process.execPath, [
   "--salt", saltFile.salt,
   "--short",
   "--remember", "180",
-  "--template", path.join(root, "src", "password_template.html"),
+  "--template", passwordTemplatePath,
   "--template-title", "福泉堂 初級團",
   "--template-instructions", "請輸入密碼。呢度只俾家長睇。",
   "--template-placeholder", "密碼",

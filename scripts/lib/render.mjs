@@ -38,24 +38,6 @@ function formatDate(iso) {
   return `${year}年${month}月${day}日 · ${weekday}`;
 }
 
-function heroArt() {
-  return `<svg class="hero-art" viewBox="0 0 420 92" aria-hidden="true">
-    <path d="M70 70 A70 70 0 0 1 190 70" fill="none" stroke="#F7A8B8" stroke-width="8" stroke-linecap="round"/>
-    <path d="M84 70 A56 56 0 0 1 176 70" fill="none" stroke="#FFD98A" stroke-width="8" stroke-linecap="round"/>
-    <path d="M98 70 A42 42 0 0 1 162 70" fill="none" stroke="#B7E4C7" stroke-width="8" stroke-linecap="round"/>
-    <path d="M112 70 A28 28 0 0 1 148 70" fill="none" stroke="#8ECAE6" stroke-width="8" stroke-linecap="round"/>
-    <g fill="#F4E2B4"><rect x="38" y="28" width="8" height="34" rx="4"/><rect x="26" y="40" width="32" height="8" rx="4"/></g>
-    <path fill="#FFE08A" d="M250 18 L256 32 L270 34 L260 44 L263 58 L250 50 L237 58 L240 44 L230 34 L244 32 Z"/>
-    <path fill="#FFFFFF" d="M300 22 L304 32 L314 34 L306 40 L308 50 L300 44 L292 50 L294 40 L286 34 L296 32 Z"/>
-    <g transform="translate(350 46) scale(0.55)">
-      <ellipse cx="0" cy="6" rx="54" ry="24" fill="#ffffff"/>
-      <ellipse cx="36" cy="-2" rx="18" ry="14" fill="#ffffff"/>
-      <path d="M-4 4 C-40 -24 -70 -4 -30 10" fill="#F7FBFF"/>
-      <path d="M58 -4 L76 2 L58 8 Z" fill="#F6C1A6"/>
-    </g>
-  </svg>`;
-}
-
 function miniCross() {
   return `<svg class="mini-cross" viewBox="0 0 36 36" aria-hidden="true">
     <rect x="15" y="4" width="6" height="28" rx="3" fill="#F4E2B4"/>
@@ -94,9 +76,10 @@ function collectStrings(weeks, demoMode) {
 }
 
 export async function renderSite({ root, weeks, demoMode }) {
-  const [css, js] = await Promise.all([
+  const [css, js, coverArt] = await Promise.all([
     readFile(path.join(root, "src/styles.css"), "utf8"),
     readFile(path.join(root, "src/site.js"), "utf8"),
+    readFile(path.join(root, "src/cover-art.svg"), "utf8"),
   ]);
   const latest = weeks[0];
   let photoCount = 0;
@@ -157,9 +140,11 @@ export async function renderSite({ root, weeks, demoMode }) {
   <main class="wrap">
     ${banner}
     <header class="hero">
-      ${heroArt()}
-      <h1>福泉堂 初級團</h1>
-      <p class="tagline">每週聚會回顧，只供家長睇</p>
+      <div class="hero-banner">
+        <div class="cover-frame">${coverArt}</div>
+        <h1>福泉堂 初級團</h1>
+        <p class="tagline">每週聚會回顧，只供家長睇</p>
+      </div>
     </header>
     <section class="panel this-week" style="--accent:${latest.themeColor}" aria-labelledby="this-week-title">
       <div class="panel-top">

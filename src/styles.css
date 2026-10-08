@@ -59,14 +59,26 @@ main.wrap {
 
 .hero {
   text-align: center;
-  padding: 8px 4px 2px;
+  padding: 0;
 }
 
-.hero-art {
-  width: min(420px, 100%);
-  height: auto;
-  margin: 0 auto 4px;
+.hero-banner {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  padding: 0 16px 18px;
+}
+
+.cover-frame {
+  margin: 0 -16px 12px;
+  background: #d7f1ff;
+}
+
+.cover-art {
   display: block;
+  width: 100%;
+  height: auto;
 }
 
 .hero h1 {
