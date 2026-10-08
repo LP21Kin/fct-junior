@@ -5,25 +5,6 @@
       <stop offset="46%" stop-color="#E7F6FF"/>
       <stop offset="100%" stop-color="#FFF3D4"/>
     </linearGradient>
-    <linearGradient id="cover-stem" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#7A4E2A"/>
-      <stop offset="16%" stop-color="#C4925C"/>
-      <stop offset="42%" stop-color="#A56B3C"/>
-      <stop offset="72%" stop-color="#8B5A2B"/>
-      <stop offset="100%" stop-color="#5E3A22"/>
-    </linearGradient>
-    <linearGradient id="cover-arm" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#7A4E2A"/>
-      <stop offset="20%" stop-color="#C4925C"/>
-      <stop offset="52%" stop-color="#A56B3C"/>
-      <stop offset="100%" stop-color="#5E3A22"/>
-    </linearGradient>
-    <clipPath id="cover-stem-clip">
-      <path d="M450 70 L502 68 L504 358 L448 362 Z"/>
-    </clipPath>
-    <clipPath id="cover-arm-clip">
-      <path d="M372 124 L574 120 L576 166 L370 172 Z"/>
-    </clipPath>
   </defs>
 
   <rect width="960" height="420" fill="url(#cover-sky)"/>
@@ -85,38 +66,10 @@
   </g>
   <ellipse cx="476" cy="352" rx="78" ry="18" fill="#8FCB9B"/>
 
-  <g fill="#5E3A22" opacity="0.14">
-    <path d="M456 78 L508 76 L510 366 L454 370 Z"/>
-    <path d="M378 132 L580 128 L582 174 L376 180 Z"/>
+  <g fill="#8B5A2B">
+    <rect x="454" y="68" width="48" height="294" rx="8"/>
+    <rect x="376" y="124" width="204" height="48" rx="8"/>
   </g>
-  <path d="M502 68 L516 80 L518 370 L504 358 Z" fill="#6A4328"/>
-  <path d="M450 70 L464 58 L516 56 L502 68 Z" fill="#8B5A34"/>
-  <g fill="none" stroke="#6A4328" stroke-width="1.3" opacity="0.55">
-    <path d="M458 66 L470 60"/>
-    <path d="M474 65 L486 58"/>
-    <path d="M490 64 L504 57"/>
-  </g>
-  <g clip-path="url(#cover-stem-clip)">
-    <path d="M450 70 L502 68 L504 358 L448 362 Z" fill="url(#cover-stem)"/>
-    <path d="M462 74 L460 358" fill="none" stroke="#5C3A22" stroke-width="2.2" opacity="0.5"/>
-    <path d="M474 72 L476 360" fill="none" stroke="#4E321C" stroke-width="1.6" opacity="0.4"/>
-    <path d="M488 70 L486 356" fill="none" stroke="#E2C39A" stroke-width="2" opacity="0.35"/>
-    <ellipse cx="470" cy="248" rx="7" ry="10" fill="none" stroke="#4E321C" stroke-width="1.6" opacity="0.55"/>
-    <ellipse cx="470" cy="248" rx="3" ry="4" fill="#6B4226" opacity="0.5"/>
-  </g>
-  <path d="M450 70 L502 68 L504 358 L448 362 Z" fill="none" stroke="#5C3A22" stroke-width="1.6"/>
-  <path d="M370 172 L576 166 L584 180 L378 186 Z" fill="#6A4328"/>
-  <path d="M372 124 L364 136 L362 184 L370 172 Z" fill="#7A5232"/>
-  <path d="M574 120 L582 132 L584 180 L576 166 Z" fill="#5E3A22"/>
-  <g clip-path="url(#cover-arm-clip)">
-    <path d="M372 124 L574 120 L576 166 L370 172 Z" fill="url(#cover-arm)"/>
-    <path d="M374 136 L572 132" fill="none" stroke="#5C3A22" stroke-width="2" opacity="0.45"/>
-    <path d="M372 150 L574 146" fill="none" stroke="#4E321C" stroke-width="1.5" opacity="0.4"/>
-    <path d="M374 162 L572 158" fill="none" stroke="#E2C39A" stroke-width="1.8" opacity="0.32"/>
-    <ellipse cx="424" cy="146" rx="9" ry="6" fill="none" stroke="#4E321C" stroke-width="1.4" opacity="0.5"/>
-    <ellipse cx="424" cy="146" rx="3.5" ry="2.2" fill="#6B4226" opacity="0.45"/>
-  </g>
-  <path d="M372 124 L574 120 L576 166 L370 172 Z" fill="none" stroke="#5C3A22" stroke-width="1.6"/>
 
   <g transform="translate(132 176)">
     <path d="M8 22 C -28 6, -62 18, -46 36 C -18 40, 4 32, 16 24" fill="#F7FBFF" stroke="#D5E6F2" stroke-width="2"/>
