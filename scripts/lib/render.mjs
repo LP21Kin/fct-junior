@@ -119,6 +119,21 @@ export async function renderSite({ root, weeks, demoMode }) {
   const points = latest.points
     .map((point, index) => `<li><span class="num">${index + 1}</span><span>${escapeHtml(point)}</span></li>`)
     .join("");
+  const verse = latest.memoryVerse
+    ? `<figure class="verse">
+          ${miniCross()}
+          <figcaption class="verse-label">金句</figcaption>
+          <blockquote><p>${escapeHtml(latest.memoryVerse)}</p></blockquote>
+          ${latest.verseRef ? `<cite>${escapeHtml(latest.verseRef)}</cite>` : ""}
+        </figure>`
+    : "";
+  const pointsCard = latest.points.length
+    ? `<div class="points-card">
+          <h3>重點</h3>
+          <ol class="points">${points}</ol>
+        </div>`
+    : "";
+  const details = verse || pointsCard ? `<div class="this-week-grid">${verse}${pointsCard}</div>` : "";
   const prayers = latest.prayers.length
     ? latest.prayers.map((item) => `<li><span class="dot" aria-hidden="true">+</span><span>${escapeHtml(item)}</span></li>`).join("")
     : `<li><span class="dot" aria-hidden="true">+</span><span>今次未有代禱事項。</span></li>`;
@@ -153,18 +168,7 @@ export async function renderSite({ root, weeks, demoMode }) {
       </div>
       <p class="theme-label">主題</p>
       <h2 id="this-week-title">${escapeHtml(latest.title)}</h2>
-      <div class="this-week-grid">
-        <figure class="verse">
-          ${miniCross()}
-          <figcaption class="verse-label">金句</figcaption>
-          <blockquote><p>${escapeHtml(latest.memoryVerse)}</p></blockquote>
-          <cite>${escapeHtml(latest.verseRef)}</cite>
-        </figure>
-        <div class="points-card">
-          <h3>重點</h3>
-          <ol class="points">${points}</ol>
-        </div>
-      </div>
+      ${details}
       <div class="jump-links">
         <a href="#albums">去睇相片</a>
         <a href="#prayers">代禱事項</a>
