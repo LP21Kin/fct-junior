@@ -149,7 +149,7 @@ https://lp21kin.github.io/fct-junior/
 11. 去公開專案 **Actions** → **發佈加密網站** → **Run workflow**。
 12. 幾分鐘後重新打開網站，就會見到新嘅一週。
 
-未設定 `DRIVE_SERVICE_ACCOUNT_JSON`，亦未設定 `CONTENT_REPO` 之前，網站會繼續用假示範。只設定私人倉，而且 Run workflow 成功之後，就會改用私人倉嘅內容。
+未設定 `DRIVE_SERVICE_ACCOUNT_JSON` 之前，網站會繼續用假示範。`CONTENT_REPO` 同 `CONTENT_READ_TOKEN` 如果只得一個，今次都會用試用示範，不會失敗。兩個都設定好，而且 Run workflow 成功之後，先至改用私人倉嘅內容。
 
 ### week.json 格式
 

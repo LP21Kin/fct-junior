@@ -42,13 +42,12 @@ if (password.length < 8) {
 if (["password", "12345678", "changeme", "staticrypt"].includes(password.toLowerCase())) {
   fail("SITE_PASSWORD 太易估。請換一個更長、更特別嘅密碼。今次不會發佈。");
 }
-if (!driveJson && ((repo && !token) || (!repo && token))) {
-  fail("CONTENT_REPO 同 CONTENT_READ_TOKEN 要一齊設定，或者兩個都留空。今次不會發佈。");
-}
-if (!driveJson && repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {
+const contentReady = Boolean(repo && token);
+const contentHalf = Boolean(repo) !== Boolean(token);
+if (!driveJson && contentReady && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {
   fail("CONTENT_REPO 格式要係「帳號/專案名」。今次不會發佈。");
 }
-if (!driveJson && token && /\s/.test(token)) {
+if (!driveJson && contentReady && /\s/.test(token)) {
   fail("CONTENT_READ_TOKEN 格式唔啱。今次不會發佈。");
 }
 
@@ -150,13 +149,17 @@ if (driveJson) {
     }
   }
   if (process.exitCode) process.exit(process.exitCode);
-} else if (repo) {
+} else if (contentReady) {
   await fetchPrivateContent();
   console.log("已讀取私人內容倉。");
-} else if (!(await hasWeekFolders()) || (await readSource()) === "demo") {
+} else if (contentHalf || !(await hasWeekFolders()) || (await readSource()) === "demo") {
+  if (contentHalf) {
+    console.log("CONTENT_REPO 同 CONTENT_READ_TOKEN 未設定齊，今次用試用示範。");
+  } else {
+    console.log("未有私人內容倉，使用試用示範（假文字同圖畫）。");
+  }
   await seedDemo(contentDir);
   demoMode = true;
-  console.log("未有私人內容倉，使用試用示範（假文字同圖畫）。");
 }
 
 if (!weeks) {
