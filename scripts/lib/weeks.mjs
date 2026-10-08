@@ -48,7 +48,7 @@ async function findPhoto(weekDir, filename) {
   return null;
 }
 
-export async function loadWeeks(contentDir) {
+export async function loadWeeks(contentDir, options = {}) {
   const weeksDir = path.join(contentDir, "weeks");
   let entries = [];
   try {
@@ -60,7 +60,7 @@ export async function loadWeeks(contentDir) {
   const weeks = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-    weeks.push(await loadWeek(path.join(weeksDir, entry.name), entry.name));
+    weeks.push(await loadWeek(path.join(weeksDir, entry.name), entry.name, options));
   }
   weeks.sort((a, b) => b.date.localeCompare(a.date));
   const seen = new Set();
@@ -71,7 +71,12 @@ export async function loadWeeks(contentDir) {
   return weeks;
 }
 
-async function loadWeek(weekDir, folderName) {
+function optionalText(value, field, max) {
+  if (value == null || value === "") return "";
+  return asText(value, field, max);
+}
+
+async function loadWeek(weekDir, folderName, options) {
   const jsonPath = path.join(weekDir, "week.json");
   let raw;
   try {
@@ -101,7 +106,7 @@ async function loadWeek(weekDir, folderName) {
   }
 
   const points = asList(data.points, `weeks/${folderName} 嘅 points`, 60);
-  if (points.length === 0) fail(`weeks/${folderName} 請至少寫一個重點。今次不會發佈。`);
+  if (!options.drive && points.length === 0) fail(`weeks/${folderName} 請至少寫一個重點。今次不會發佈。`);
 
   const loadedPhotos = [];
   for (const [index, photo] of photos.entries()) {
@@ -124,10 +129,14 @@ async function loadWeek(weekDir, folderName) {
 
   return {
     date,
-    title: asText(data.title, `weeks/${folderName} 嘅 title`, 30),
+    title: asText(data.title, `weeks/${folderName} 嘅 title`, options.drive ? 40 : 30),
     themeColor,
-    memoryVerse: asText(data.memoryVerse, `weeks/${folderName} 嘅 memoryVerse`, 120),
-    verseRef: asText(data.verseRef, `weeks/${folderName} 嘅 verseRef`, 24),
+    memoryVerse: options.drive
+      ? optionalText(data.memoryVerse, `weeks/${folderName} 嘅 memoryVerse`, 120)
+      : asText(data.memoryVerse, `weeks/${folderName} 嘅 memoryVerse`, 120),
+    verseRef: options.drive
+      ? optionalText(data.verseRef, `weeks/${folderName} 嘅 verseRef`, 24)
+      : asText(data.verseRef, `weeks/${folderName} 嘅 verseRef`, 24),
     points,
     prayers: asList(data.prayers, `weeks/${folderName} 嘅 prayers`, 60),
     photos: loadedPhotos,

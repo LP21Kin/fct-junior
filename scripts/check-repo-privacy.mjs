@@ -32,7 +32,13 @@ for (const file of files) {
   if (normalized !== "package-lock.json" && info.size > 400 * 1024) {
     fail(`${file} 太大，公開專案不應存放大型檔案。`);
   }
-  const sample = readFileSync(full).subarray(0, 16);
+  const bytes = readFileSync(full);
+  const pemMarker = Buffer.from(`-----BEGIN ${"PRIVATE"} KEY-----`);
+  const jsonMarker = Buffer.from(`"private_${"key"}"`);
+  if (bytes.includes(pemMarker) || bytes.includes(jsonMarker)) {
+    fail(`${file} 含有服務帳戶密鑰。`);
+  }
+  const sample = bytes.subarray(0, 16);
   for (const item of magic) {
     if (sample.subarray(0, item.bytes.length).equals(item.bytes)) {
       fail(`${file} 內容似 ${item.name} 圖片。`);
@@ -44,12 +50,15 @@ for (const file of files) {
 }
 
 const workflow = readFileSync(".github/workflows/pages.yml", "utf8");
-for (const required of ["secrets.SITE_PASSWORD", "workflow_dispatch", "verify-published.mjs", "actions/deploy-pages", "path: dist"]) {
+for (const required of ["secrets.SITE_PASSWORD", "secrets.DRIVE_SERVICE_ACCOUNT_JSON", "workflow_dispatch", "verify-published.mjs", "actions/deploy-pages", "path: dist"]) {
   if (!workflow.includes(required)) fail(`發佈流程缺少 ${required}`);
 }
 if (!/branches:\s*\[main\]/.test(workflow)) fail("發佈流程必須只在 main 分支推送時運行。");
-if (/echo\s+["']?\$\{?SITE_PASSWORD/.test(workflow) || /--password\s+\S+/.test(workflow)) {
+if (/echo\s+["']?\$\{?SITE_PASSWORD/.test(workflow) || /echo\s+.*DRIVE_SERVICE_ACCOUNT_JSON/.test(workflow) || /--password\s+\S+/.test(workflow)) {
   fail("發佈流程似乎會顯示或寫入密碼。");
+}
+if (workflow.includes("DRIVE_TOKEN_URL") || workflow.includes("DRIVE_API_URL")) {
+  fail("發佈流程不可以改去其他 Drive 網址。");
 }
 if (!workflow.includes("exit 1")) fail("缺少密碼時發佈流程必須停止。");
 

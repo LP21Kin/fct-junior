@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { seedDemo } from "./seed-demo.mjs";
+import { DriveError, driveSettings, importDriveWeeks } from "./lib/drive.mjs";
 import { loadWeeks } from "./lib/weeks.mjs";
 import { renderSite } from "./lib/render.mjs";
 
@@ -29,6 +30,8 @@ function scrub(text, secrets) {
 const password = process.env.SITE_PASSWORD || "";
 const token = process.env.CONTENT_READ_TOKEN || "";
 const repo = (process.env.CONTENT_REPO || "").trim();
+const driveJson = (process.env.DRIVE_SERVICE_ACCOUNT_JSON || "").trim();
+const secretValues = [password, token, driveJson].filter(Boolean);
 
 if (!password) {
   fail("未設定 SITE_PASSWORD。為咗保護內容，今次不會產生任何網頁。");
@@ -39,13 +42,13 @@ if (password.length < 8) {
 if (["password", "12345678", "changeme", "staticrypt"].includes(password.toLowerCase())) {
   fail("SITE_PASSWORD 太易估。請換一個更長、更特別嘅密碼。今次不會發佈。");
 }
-if ((repo && !token) || (!repo && token)) {
+if (!driveJson && ((repo && !token) || (!repo && token))) {
   fail("CONTENT_REPO 同 CONTENT_READ_TOKEN 要一齊設定，或者兩個都留空。今次不會發佈。");
 }
-if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {
+if (!driveJson && repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {
   fail("CONTENT_REPO 格式要係「帳號/專案名」。今次不會發佈。");
 }
-if (token && /\s/.test(token)) {
+if (!driveJson && token && /\s/.test(token)) {
   fail("CONTENT_READ_TOKEN 格式唔啱。今次不會發佈。");
 }
 
@@ -78,7 +81,7 @@ async function fetchPrivateContent() {
     ]);
     if (result.status !== 0) {
       console.error("連唔到私人內容倉。請檢查 CONTENT_REPO 同 CONTENT_READ_TOKEN。今次不會發佈。");
-      console.error(scrub(`${result.stderr || ""}\n${result.stdout || ""}`, [token, password]).split("\n").slice(0, 12).join("\n"));
+      console.error(scrub(`${result.stderr || ""}\n${result.stdout || ""}`, secretValues).split("\n").slice(0, 12).join("\n"));
       process.exit(1);
     }
     const candidates = [path.join(dest, "weeks"), path.join(dest, "content", "weeks")];
@@ -96,10 +99,13 @@ async function fetchPrivateContent() {
 }
 
 function run(command, args, extraEnv = {}) {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: "0", ...extraEnv };
+  delete env.DRIVE_SERVICE_ACCOUNT_JSON;
+  delete env.CONTENT_READ_TOKEN;
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: root,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0", ...extraEnv },
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -115,7 +121,36 @@ function run(command, args, extraEnv = {}) {
 }
 
 let demoMode = false;
-if (repo) {
+let weeks;
+if (driveJson) {
+  let driveSettingsOk = true;
+  try {
+    driveSettings();
+  } catch (error) {
+    driveSettingsOk = false;
+    console.error(error instanceof DriveError ? error.message : "Drive 設定唔啱。今次不會發佈。");
+    process.exitCode = 1;
+  }
+  const dest = driveSettingsOk ? await mkdtemp(path.join(tmpdir(), "fct-drive-")) : "";
+  if (dest) {
+    try {
+      const summary = await importDriveWeeks({ jsonText: driveJson, destDir: dest });
+      weeks = await loadWeeks(dest, { drive: true });
+      if (!weeks.length) throw new DriveError("Drive 資料夾入面搵唔到可用嘅週次。今次不會發佈。");
+      console.log(`已從 Google Drive 讀取 ${summary.weeks} 個週次、${summary.photos} 張相片。`);
+      if (summary.capped) console.log("有週次相片多過 20 張，網站只用咗 20 張。");
+    } catch (error) {
+      const message = error instanceof DriveError
+        ? error.message
+        : "讀取 Google Drive 失敗。今次不會發佈。";
+      console.error(scrub(message, secretValues));
+      process.exitCode = 1;
+    } finally {
+      await rm(dest, { recursive: true, force: true });
+    }
+  }
+  if (process.exitCode) process.exit(process.exitCode);
+} else if (repo) {
   await fetchPrivateContent();
   console.log("已讀取私人內容倉。");
 } else if (!(await hasWeekFolders()) || (await readSource()) === "demo") {
@@ -124,11 +159,12 @@ if (repo) {
   console.log("未有私人內容倉，使用試用示範（假文字同圖畫）。");
 }
 
-let weeks;
-try {
-  weeks = await loadWeeks(contentDir);
-} catch {
-  process.exit(process.exitCode || 1);
+if (!weeks) {
+  try {
+    weeks = await loadWeeks(contentDir);
+  } catch {
+    process.exit(process.exitCode || 1);
+  }
 }
 if (!weeks.length) fail("搵唔到任何一週內容。今次不會發佈。");
 
@@ -182,14 +218,14 @@ await rm(path.join(buildDir, "plaintext"), { recursive: true, force: true });
 if (encrypt.status !== 0) {
   await rm(distDir, { recursive: true, force: true });
   console.error("加密失敗。為咗安全，已刪除輸出，不會發佈。");
-  console.error(scrub(`${encrypt.stderr || ""}\n${encrypt.stdout || ""}`, [password, token]));
+  console.error(scrub(`${encrypt.stderr || ""}\n${encrypt.stdout || ""}`, secretValues));
   process.exit(1);
 }
 
 if (!existsSync(path.join(distDir, "index.html"))) {
   await rm(distDir, { recursive: true, force: true });
   console.error("加密後搵唔到首頁。不會發佈。");
-  console.error(scrub(`${encrypt.stdout}\n${encrypt.stderr}`, [password, token]));
+  console.error(scrub(`${encrypt.stdout}\n${encrypt.stderr}`, secretValues));
   process.exit(1);
 }
 
@@ -199,7 +235,7 @@ await cp(path.join(root, "public", "robots.txt"), path.join(distDir, "robots.txt
 const verified = await run(process.execPath, ["scripts/verify-published.mjs"]);
 if (verified.status !== 0) {
   await rm(distDir, { recursive: true, force: true });
-  console.error(scrub(`${verified.stdout}\n${verified.stderr}`, [password, token]));
+  console.error(scrub(`${verified.stdout}\n${verified.stderr}`, secretValues));
   process.exit(verified.status || 1);
 }
 

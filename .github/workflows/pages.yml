@@ -49,6 +49,8 @@ jobs:
       - name: 壓縮、嵌圖、加密
         env:
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          DRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.DRIVE_SERVICE_ACCOUNT_JSON }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
           CONTENT_REPO: ${{ secrets.CONTENT_REPO }}
           CONTENT_READ_TOKEN: ${{ secrets.CONTENT_READ_TOKEN }}
         run: npm run build

@@ -32,6 +32,10 @@ const env = {
 };
 delete env.CONTENT_REPO;
 delete env.CONTENT_READ_TOKEN;
+delete env.DRIVE_SERVICE_ACCOUNT_JSON;
+delete env.DRIVE_FOLDER_ID;
+delete env.DRIVE_TOKEN_URL;
+delete env.DRIVE_API_URL;
 delete env.STATICRYPT_PASSWORD;
 
 try {

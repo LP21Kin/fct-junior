@@ -4,7 +4,7 @@
 
 成個網頁同埋所有相片都會加密。冇密碼嘅人，只會見到一個輸入密碼嘅頁面。
 
-試用階段會先顯示**假文字同圖畫**，方便睇版面。黃色提示會寫明「試用示範」。接上真正內容之後，提示會消失。
+未設定 Google Drive 之前，網站會顯示**假文字同圖畫**，方便睇版面。黃色提示會寫明「試用示範」。Drive 讀到真正相片之後，提示會消失。
 
 家長網址（合併同設定完成之後先會出現）：
 
@@ -57,7 +57,49 @@ https://lp21kin.github.io/fct-junior/
 
 如果 GitHub 話要批准 environment，撳批准就得。
 
-## 每週點樣放相片（好重要）
+## 每週相片由 Google Drive 讀取（建議）
+
+相片放喺你而家用緊嘅私人資料夾「26-27_初級團周會活動照片」。唔好改成「知道連結嘅任何人」，亦都唔好公開。
+
+每個星期開一個子資料夾，名稱要係日期、底線、活動名稱，例如 `20260919_中秋小工匠`。入面只放 JPEG。唔使寫 `week.json`，亦都唔使寫金句、重點或者小朋友個名。網站會用資料夾個名做主題。說明會自動寫成「活動相片 1」，不會用原本嘅檔名。
+
+一個星期如果多過 **20** 張，網站只用檔名順序最先嘅 20 張，其餘唔會放上嚟。
+
+發佈嗰陣先會下載相片，壓縮到大約 200–300KB，去掉拍攝位置等隱藏資料，嵌進網頁，然後加密。下載嘅相片不會寫入呢個公開專案，亦不會留喺發佈檔案入面。
+
+未設定下面個 secret 之前，網站繼續用假示範，不會失敗。secret 設定咗但係讀唔到 Drive，發佈會失敗，不會把假示範當成真相片發佈。
+
+### 只需做一次
+
+1. 用開 Drive 嗰個 Google 帳戶，打開 https://console.cloud.google.com/ 。第一次用就同意條款。
+2. 頂部揀項目 → **New project**。名稱可以叫 `fct-junior-drive` → **Create**。
+3. 確定頂部已經係呢個新項目。
+4. 左上三條線 → **APIs & Services** → **Library**。
+5. 搜尋 `Google Drive API` → 撳入去 → **Enable**。
+6. 左面 **Credentials** → **Create credentials** → **Service account**。
+7. 名稱填 `fct-junior-reader` → **Create and continue**。
+8. 角色嗰步唔好揀擁有者，直接 **Continue**，然後 **Done**。
+9. 撳入 `fct-junior-reader` → **Keys** → **Add key** → **Create new key** → 揀 **JSON** → **Create**。
+10. 電腦會下載一個 `.json` 檔。用記事本打開，搵 `client_email`。係一串 `@...gserviceaccount.com`。
+11. 打開 Drive 資料夾「26-27_初級團周會活動照片」→ **共用**。
+12. 貼上 `client_email`。權限揀 **檢視者**。
+13. 唔好揀「知道連結嘅任何人」。撳 **傳送** 或 **共用**。
+14. 返去公開專案 `fct-junior` → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**。
+15. Name 填 `DRIVE_SERVICE_ACCOUNT_JSON`。Secret 貼上成個 JSON 檔內容，由 `{` 到 `}`。
+16. 撳 **Add secret**。
+17. 刪走或者收好電腦上嘅 json 檔。
+
+唔好把 JSON 檔或者密碼貼去聊天、電郵、或者 pull request。`client_email` 只用於 Drive 嘅「共用」。
+
+跟住去 **Actions** → **發佈加密網站** → **Run workflow**。
+
+之後每個星期：喺同一個 Drive 資料夾開新子資料夾，放入 JPEG，再撳一次 **Run workflow**。
+
+如果想換另一個資料夾，可以再加一個 secret，名稱 `DRIVE_FOLDER_ID`，內容係新資料夾個編號。留空就用而家呢個。
+
+如果已經設定 `DRIVE_SERVICE_ACCOUNT_JSON`，網站會用 Drive，不會再用下面嘅私人 GitHub 專案。
+
+## 另一個方法：放喺私人 GitHub 專案
 
 呢個 `fct-junior` 專案係**公開**嘅。任何人都可以睇到裡面嘅檔案。
 
@@ -107,7 +149,7 @@ https://lp21kin.github.io/fct-junior/
 11. 去公開專案 **Actions** → **發佈加密網站** → **Run workflow**。
 12. 幾分鐘後重新打開網站，就會見到新嘅一週。
 
-未設定 `CONTENT_REPO` 之前，網站會繼續用假示範。設定好而且 Run workflow 成功之後，就會改用私人倉嘅內容。
+未設定 `DRIVE_SERVICE_ACCOUNT_JSON`，亦未設定 `CONTENT_REPO` 之前，網站會繼續用假示範。只設定私人倉，而且 Run workflow 成功之後，就會改用私人倉嘅內容。
 
 ### week.json 格式
 
@@ -161,7 +203,7 @@ https://lp21kin.github.io/fct-junior/
 
 ## 點樣加密
 
-1. GitHub Actions 用 `SITE_PASSWORD` 做密碼。
+1. GitHub Actions 用 `SITE_PASSWORD` 做密碼。如果有 `DRIVE_SERVICE_ACCOUNT_JSON`，會先讀私人 Drive，讀完就刪走下載嘅相片。
 2. 程式將每週文字同相片（相片先變成網頁入面嘅資料）合成一個頁面。
 3. [StatiCrypt](https://github.com/robinmoisson/staticrypt) 用 AES-256 加密成個頁面。
 4. 公開出嚟嘅只係密碼頁。正確密碼先會喺家長自己嘅瀏覽器入面解開。
