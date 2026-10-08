@@ -5,11 +5,25 @@
       <stop offset="46%" stop-color="#E7F6FF"/>
       <stop offset="100%" stop-color="#FFF3D4"/>
     </linearGradient>
-    <linearGradient id="cover-cross" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#FFF6D4"/>
-      <stop offset="55%" stop-color="#F6E3A4"/>
-      <stop offset="100%" stop-color="#F0D48A"/>
+    <linearGradient id="cover-stem" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7A4E2A"/>
+      <stop offset="16%" stop-color="#C4925C"/>
+      <stop offset="42%" stop-color="#A56B3C"/>
+      <stop offset="72%" stop-color="#8B5A2B"/>
+      <stop offset="100%" stop-color="#5E3A22"/>
     </linearGradient>
+    <linearGradient id="cover-arm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7A4E2A"/>
+      <stop offset="20%" stop-color="#C4925C"/>
+      <stop offset="52%" stop-color="#A56B3C"/>
+      <stop offset="100%" stop-color="#5E3A22"/>
+    </linearGradient>
+    <clipPath id="cover-stem-clip">
+      <rect x="454" y="70" width="44" height="292" rx="12"/>
+    </clipPath>
+    <clipPath id="cover-arm-clip">
+      <rect x="388" y="128" width="176" height="44" rx="12"/>
+    </clipPath>
   </defs>
 
   <rect width="960" height="420" fill="url(#cover-sky)"/>
@@ -71,18 +85,28 @@
   </g>
   <ellipse cx="476" cy="352" rx="78" ry="18" fill="#8FCB9B"/>
 
-  <g fill="#F8E7A8" opacity="0.55">
-    <rect x="448" y="64" width="56" height="304" rx="18"/>
-    <rect x="376" y="122" width="200" height="56" rx="18"/>
+  <g fill="#5E3A22" opacity="0.16">
+    <rect x="458" y="76" width="44" height="292" rx="12"/>
+    <rect x="392" y="134" width="176" height="44" rx="12"/>
   </g>
-  <g fill="url(#cover-cross)" stroke="#E4C56A" stroke-width="2.5">
-    <rect x="454" y="70" width="44" height="292" rx="12"/>
-    <rect x="388" y="128" width="176" height="44" rx="12"/>
+  <g clip-path="url(#cover-stem-clip)">
+    <rect x="454" y="70" width="44" height="292" fill="url(#cover-stem)"/>
+    <path d="M464 72 C 467 130, 461 190, 465 250 C 468 300, 462 340, 465 360" fill="none" stroke="#5C3A22" stroke-width="2.4" opacity="0.55"/>
+    <path d="M474 72 C 471 140, 478 200, 473 270 C 470 320, 476 350, 473 360" fill="none" stroke="#4E321C" stroke-width="1.8" opacity="0.45"/>
+    <path d="M486 72 C 488 150, 483 210, 487 280 C 490 320, 484 350, 486 360" fill="none" stroke="#E2C39A" stroke-width="2.2" opacity="0.4"/>
+    <ellipse cx="472" cy="236" rx="6.5" ry="9" fill="none" stroke="#4E321C" stroke-width="1.5" opacity="0.6"/>
+    <ellipse cx="472" cy="236" rx="3" ry="4.2" fill="#6B4226" opacity="0.55"/>
   </g>
-  <g fill="#FFF9E6" opacity="0.9">
-    <rect x="462" y="84" width="12" height="258" rx="6"/>
-    <rect x="404" y="136" width="72" height="12" rx="6"/>
+  <rect x="454" y="70" width="44" height="292" rx="12" fill="none" stroke="#5E3A22" stroke-width="2"/>
+  <g clip-path="url(#cover-arm-clip)">
+    <rect x="388" y="128" width="176" height="44" fill="url(#cover-arm)"/>
+    <path d="M390 140 C 440 136, 500 146, 562 138" fill="none" stroke="#5C3A22" stroke-width="2.2" opacity="0.5"/>
+    <path d="M390 152 C 450 157, 510 147, 562 154" fill="none" stroke="#4E321C" stroke-width="1.7" opacity="0.4"/>
+    <path d="M390 163 C 430 159, 510 168, 562 161" fill="none" stroke="#E2C39A" stroke-width="2" opacity="0.35"/>
+    <ellipse cx="430" cy="150" rx="8" ry="5" fill="none" stroke="#4E321C" stroke-width="1.4" opacity="0.5"/>
+    <ellipse cx="430" cy="150" rx="3.2" ry="2" fill="#6B4226" opacity="0.5"/>
   </g>
+  <rect x="388" y="128" width="176" height="44" rx="12" fill="none" stroke="#5E3A22" stroke-width="2"/>
 
   <g transform="translate(132 176)">
     <path d="M8 22 C -28 6, -62 18, -46 36 C -18 40, 4 32, 16 24" fill="#F7FBFF" stroke="#D5E6F2" stroke-width="2"/>
