@@ -1,0 +1,24 @@
+# 可選。複製去私人倉之後，先至會自動叫公開網站更新。
+# 私人倉要有一個 secret，名叫 PUBLIC_SITE_TOKEN，
+# 而且呢個 token 要有權限喺公開專案啟動 Actions。
+# 未設定之前，唔使理呢個檔案。每次改完內容，去公開專案手動 Run workflow 就得。
+name: 通知公開網站更新
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 請公開網站重新發佈
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_SITE_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "未設定 PUBLIC_SITE_TOKEN。請到公開專案手動 Run workflow。"
+            exit 0
+          fi
+          gh workflow run "發佈加密網站" --repo LP21Kin/fct-junior --ref main

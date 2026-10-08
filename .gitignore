@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+content/
+private-content/
+.env
+.env.*
+*.log
+.DS_Store
+*.pem
+.staticrypt.json.bak
