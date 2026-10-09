@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { compressPhoto } from "./compress.mjs";
+import { coverImgTag } from "./cover.mjs";
 
 const PRIVACY_TITLE = "溫馨提示";
 const PRIVACY_BODY = "呢度只畀初級團家長睇 💛 私人小天地，唔對外公開；請大家唔好轉發，一齊保護小朋友🙏🏻";
@@ -16,6 +17,7 @@ const UI_STRINGS = [
   "重點",
   "主題",
   "撳一張相可以放大",
+  "相簿會自動換相",
   "試用示範",
   "清除呢部裝置記住咗嘅密碼",
   "去睇相片",
@@ -90,7 +92,7 @@ export async function renderSite({ root, weeks, demoMode }) {
   const [css, js, coverArt] = await Promise.all([
     readFile(path.join(root, "src/styles.css"), "utf8"),
     readFile(path.join(root, "src/site.js"), "utf8"),
-    readFile(path.join(root, "src/cover-art.svg"), "utf8"),
+    coverImgTag(root),
   ]);
   const latest = weeks[0];
   let photoCount = 0;
@@ -106,12 +108,21 @@ export async function renderSite({ root, weeks, demoMode }) {
       const src = `data:${compressed.mime};base64,${compressed.buffer.toString("base64")}`;
       const caption = escapeHtml(photo.caption);
       figures.push(`<li><figure>
-        <button class="photo-button" type="button" data-album="${escapeHtml(week.date)}" data-index="${index}" aria-label="放大：${caption}">
+        <button class="photo-frame photo-button" type="button" data-album="${escapeHtml(week.date)}" data-index="${index}" aria-label="放大：${caption}">
           <img alt="${caption}" src="${src}" width="640" height="640" loading="lazy" decoding="async">
         </button>
         <figcaption>${caption}</figcaption>
       </figure></li>`);
     }
+    const firstCaption = week.photos[0] ? escapeHtml(week.photos[0].caption) : "";
+    const slideshow = week.photos.length
+      ? `<figure class="slideshow" data-album="${escapeHtml(week.date)}" data-index="0">
+        <button class="photo-frame slideshow-photo" type="button" data-album="${escapeHtml(week.date)}" data-index="0" aria-label="放大：${firstCaption}">
+          <img alt="${firstCaption}" width="640" height="480" decoding="async">
+        </button>
+        <figcaption>${firstCaption}</figcaption>
+      </figure>`
+      : "";
     albums.push(`<article class="album" style="--accent:${week.themeColor}">
       <div class="stripe"></div>
       <div class="album-body">
@@ -122,6 +133,7 @@ export async function renderSite({ root, weeks, demoMode }) {
           </div>
           <span class="count">${week.photos.length} 張</span>
         </header>
+        ${slideshow}
         <ul class="photo-grid">${figures.join("")}</ul>
       </div>
     </article>`);
@@ -205,7 +217,7 @@ export async function renderSite({ root, weeks, demoMode }) {
     <section id="albums">
       <div class="section-head">
         <h2 class="section-title">${titleIcon("album")}活動回顧</h2>
-        <p>由新到舊。撳一張相可以放大。</p>
+        <p>由新到舊。相簿會自動換相，撳一張相可以放大。</p>
       </div>
       ${albums.join("")}
     </section>

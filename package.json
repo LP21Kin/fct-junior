@@ -11,7 +11,7 @@
     "build": "node scripts/build.mjs",
     "verify": "node scripts/verify-published.mjs",
     "check-privacy": "node scripts/check-repo-privacy.mjs",
-    "test": "node scripts/test-fail-closed.mjs && node scripts/test-compress.mjs && node scripts/test-drive.mjs && node scripts/test-roundtrip.mjs",
+    "test": "node scripts/test-ui.mjs && node scripts/test-fail-closed.mjs && node scripts/test-compress.mjs && node scripts/test-drive.mjs && node scripts/test-roundtrip.mjs",
     "seed-demo": "node scripts/seed-demo.mjs"
   },
   "dependencies": {

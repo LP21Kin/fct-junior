@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COVER_ALT, stripCoverDataUri } from "./lib/cover.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = process.env.OUTPUT_DIR || path.join(root, "dist");
@@ -31,7 +32,8 @@ for (const name of names) {
   const info = await stat(filePath);
   if (!info.isFile()) fail(`${name} 不是檔案。`);
   const text = await readFile(filePath, "utf8");
-  if (text.includes("data:image")) fail(`${name} 含有未加密圖片。`);
+  const visible = await stripCoverDataUri(root, text);
+  if (visible.includes("data:image")) fail(`${name} 含有未加密圖片。`);
   if (text.includes("data-plaintext-root")) fail(`${name} 含有未加密頁面。`);
   if (password && password.length >= 4 && text.includes(password)) {
     fail("輸出入面出現咗密碼字串。已停止。");
@@ -46,5 +48,6 @@ if (!index.includes("staticrypt") || !index.includes("記住密碼") || !index.i
   fail("密碼頁不完整，或者未有「記住密碼」。");
 }
 if (!index.includes("福泉堂 初級團")) fail("密碼頁缺少網站名稱。");
+if (!index.includes('class="cover-art"') || !index.includes(COVER_ALT)) fail("密碼頁未有封面圖。");
 
 console.log("加密檢查通過：輸出只有密碼頁同加密內容，沒有明文或圖片檔。");
