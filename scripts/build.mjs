@@ -31,7 +31,8 @@ const password = process.env.SITE_PASSWORD || "";
 const token = process.env.CONTENT_READ_TOKEN || "";
 const repo = (process.env.CONTENT_REPO || "").trim();
 const driveJson = (process.env.DRIVE_SERVICE_ACCOUNT_JSON || "").trim();
-const secretValues = [password, token, driveJson].filter(Boolean);
+const driveFolderId = (process.env.DRIVE_FOLDER_ID || "").trim();
+const secretValues = [password, token, driveJson, driveFolderId].filter(Boolean);
 
 if (!password) {
   fail("未設定 SITE_PASSWORD。為咗保護內容，今次不會產生任何網頁。");
@@ -100,6 +101,7 @@ async function fetchPrivateContent() {
 function run(command, args, extraEnv = {}) {
   const env = { ...process.env, GIT_TERMINAL_PROMPT: "0", ...extraEnv };
   delete env.DRIVE_SERVICE_ACCOUNT_JSON;
+  delete env.DRIVE_FOLDER_ID;
   delete env.CONTENT_READ_TOKEN;
   return new Promise((resolve) => {
     const child = spawn(command, args, {

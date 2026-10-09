@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
-import { importDriveWeeks, parseWeekFolderName } from "./lib/drive.mjs";
+import { DriveError, driveSettings, importDriveWeeks, parseWeekFolderName } from "./lib/drive.mjs";
 import { compressPhoto } from "./lib/compress.mjs";
 import { loadWeeks } from "./lib/weeks.mjs";
 import { renderSite } from "./lib/render.mjs";
@@ -51,6 +51,30 @@ assert(parseWeekFolderName("20260919_測試手工")?.date === "2026-09-19", "資
 assert(parseWeekFolderName("20260919_測試手工")?.title === "測試手工", "資料夾標題解錯。");
 assert(parseWeekFolderName("20260231_唔啱") === null, "無效日期不應接受。");
 assert(parseWeekFolderName("notes") === null, "普通資料夾不應當成週次。");
+
+function assertFolderSecretRejected(env, includes) {
+  let failed = false;
+  try {
+    driveSettings(env);
+  } catch (error) {
+    failed = error instanceof DriveError
+      && error.message.includes(includes)
+      && error.message.includes("Kin")
+      && error.message.includes("secret DRIVE_FOLDER_ID")
+      && error.message.includes("不會發佈");
+  }
+  assert(failed, `DRIVE_FOLDER_ID（${includes}）應停止發佈。`);
+}
+
+assertFolderSecretRejected({}, "未設定 DRIVE_FOLDER_ID");
+assertFolderSecretRejected({ DRIVE_FOLDER_ID: "" }, "未設定 DRIVE_FOLDER_ID");
+assertFolderSecretRejected({ DRIVE_FOLDER_ID: "   " }, "未設定 DRIVE_FOLDER_ID");
+assertFolderSecretRejected({ DRIVE_FOLDER_ID: "short" }, "格式唔啱");
+assertFolderSecretRejected({ DRIVE_FOLDER_ID: "not a folder" }, "格式唔啱");
+const trimmed = driveSettings({ DRIVE_FOLDER_ID: `  ${folderId}  ` });
+assert(trimmed.folderId === folderId, "DRIVE_FOLDER_ID 應去掉前後空白。");
+assert(trimmed.tokenUrl === "https://oauth2.googleapis.com/token", "未改 Drive 登入網址。");
+assert(trimmed.apiUrl === "https://www.googleapis.com/drive/v3", "未改 Drive API 網址。");
 
 function filesFor(mode) {
   const files = [
@@ -347,5 +371,39 @@ try {
 
 await expectDriveFailure("deny", "讀唔到 Google Drive");
 await expectDriveFailure("bad-json", "唔係有效嘅 JSON");
+
+async function expectFolderSecretFailure(label, folderValue, includes) {
+  const dir = await mkdtemp(path.join(tmpdir(), "fct-drive-folder-"));
+  try {
+    const result = await runBuild({
+      SITE_PASSWORD: password,
+      DRIVE_SERVICE_ACCOUNT_JSON: serviceAccount,
+      DRIVE_FOLDER_ID: folderValue,
+      OUTPUT_DIR: path.join(dir, "dist"),
+      BUILD_DIR: path.join(dir, "build"),
+      CONTENT_DIR: path.join(dir, "content"),
+    });
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert(result.status !== 0, `${label} 不應發佈成功。`);
+    assert(output.includes(includes), `${label} 錯誤訊息不對。`);
+    assert(output.includes("不會發佈"), `${label} 應講明不會發佈。`);
+    assert(output.includes("secret DRIVE_FOLDER_ID"), `${label} 應講明要設定 secret。`);
+    assert(outputIsClean(output), `${label} 輸出洩漏了秘密或檔名。`);
+    let published = false;
+    try {
+      await readFile(path.join(dir, "dist", "index.html"));
+      published = true;
+    } catch {
+      published = false;
+    }
+    assert(!published, `${label} 不應寫出網頁。`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+await expectFolderSecretFailure("沒有資料夾編號", "", "未設定 DRIVE_FOLDER_ID");
+await expectFolderSecretFailure("空白資料夾編號", "   ", "未設定 DRIVE_FOLDER_ID");
+await expectFolderSecretFailure("資料夾編號格式唔啱", "not a folder", "格式唔啱");
 
 console.log("Drive 讀取測試通過。");
