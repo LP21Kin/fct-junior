@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { compressPhoto } from "./compress.mjs";
+import { coverImgTag } from "./cover.mjs";
 
 const UI_STRINGS = [
   "今週周會",
@@ -79,7 +80,7 @@ export async function renderSite({ root, weeks, demoMode }) {
   const [css, js, coverArt] = await Promise.all([
     readFile(path.join(root, "src/styles.css"), "utf8"),
     readFile(path.join(root, "src/site.js"), "utf8"),
-    readFile(path.join(root, "src/cover-art.svg"), "utf8"),
+    coverImgTag(root),
   ]);
   const latest = weeks[0];
   let photoCount = 0;

@@ -4,6 +4,8 @@ import path from "node:path";
 
 const imageName = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/i;
 const blockedPrefixes = ["content/", "dist/", "build/", "private-content/"];
+const coverPath = "src/cover-art.jpg";
+const coverMaxBytes = 600 * 1024;
 const magic = [
   { name: "JPEG", bytes: Buffer.from([0xff, 0xd8, 0xff]) },
   { name: "PNG", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
@@ -20,16 +22,19 @@ if (files.length === 0) fail("搵唔到已追蹤檔案。");
 
 for (const file of files) {
   const normalized = file.replaceAll("\\", "/");
+  const isCover = normalized === coverPath;
   if (blockedPrefixes.some((prefix) => normalized.startsWith(prefix))) {
     fail(`${file} 不應出現在公開專案。`);
   }
-  if (imageName.test(normalized)) fail(`${file} 係圖片檔。公開專案不可以提交相片。`);
+  if (imageName.test(normalized) && !isCover) fail(`${file} 係圖片檔。公開專案不可以提交相片。`);
   if (normalized.includes("/photos/")) fail(`${file} 位於相片資料夾。`);
   if (normalized.endsWith(".env") || normalized.includes(".env.")) fail(`${file} 可能含有密碼。`);
 
   const full = path.resolve(file);
   const info = statSync(full);
-  if (normalized !== "package-lock.json" && info.size > 400 * 1024) {
+  if (isCover) {
+    if (info.size > coverMaxBytes) fail(`${file} 封面圖太大。`);
+  } else if (normalized !== "package-lock.json" && info.size > 400 * 1024) {
     fail(`${file} 太大，公開專案不應存放大型檔案。`);
   }
   const bytes = readFileSync(full);
@@ -42,13 +47,18 @@ for (const file of files) {
   if (bytes.includes(defaultFolderMarker)) {
     fail(`${file} 唔可以再有預設 Drive 資料夾編號。`);
   }
+  if (isCover) {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff]);
+    if (!bytes.subarray(0, jpeg.length).equals(jpeg)) fail(`${file} 封面必須係 JPEG。`);
+    continue;
+  }
   const sample = bytes.subarray(0, 16);
   for (const item of magic) {
     if (sample.subarray(0, item.bytes.length).equals(item.bytes)) {
       fail(`${file} 內容似 ${item.name} 圖片。`);
     }
   }
-  if (sample.subarray(0, 4).toString() === "RIFF" && readFileSync(full).subarray(8, 12).toString() === "WEBP") {
+  if (sample.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP") {
     fail(`${file} 內容似 WEBP 圖片。`);
   }
 }
@@ -66,4 +76,4 @@ if (workflow.includes("DRIVE_TOKEN_URL") || workflow.includes("DRIVE_API_URL")) 
 }
 if (!workflow.includes("exit 1")) fail("缺少密碼時發佈流程必須停止。");
 
-console.log("隱私檢查通過：公開專案沒有相片檔，發佈流程會在沒有密碼時停止。");
+console.log("隱私檢查通過：公開專案沒有活動相片，發佈流程會在沒有密碼時停止。");

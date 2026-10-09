@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COVER_ALT, stripCoverDataUri } from "./lib/cover.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const password = randomBytes(18).toString("base64url");
@@ -55,8 +56,13 @@ try {
     process.exit(1);
   }
   const html = await readFile(path.join(outputDir, "index.html"), "utf8");
-  if (html.includes("彩虹嘅應許") || html.includes("data:image")) {
+  const visible = await stripCoverDataUri(root, html);
+  if (visible.includes("彩虹嘅應許") || visible.includes("data:image")) {
     console.error("加密頁仍可讀到示範內容或圖片。");
+    process.exit(1);
+  }
+  if (!html.includes(COVER_ALT)) {
+    console.error("密碼頁未有封面。");
     process.exit(1);
   }
   if (!html.includes("記住密碼")) {
