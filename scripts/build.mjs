@@ -8,6 +8,7 @@ import { seedDemo } from "./seed-demo.mjs";
 import { DriveError, driveSettings, importDriveWeeks } from "./lib/drive.mjs";
 import { loadWeeks } from "./lib/weeks.mjs";
 import { renderSite } from "./lib/render.mjs";
+import { COVER_ALT, coverImgTag } from "./lib/cover.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const contentDir = process.env.CONTENT_DIR || path.join(root, "content");
@@ -177,12 +178,12 @@ await mkdir(path.join(buildDir, "plaintext"), { recursive: true });
 const plaintextPath = path.join(buildDir, "plaintext", "index.html");
 await writeFile(plaintextPath, rendered.html, "utf8");
 await writeFile(path.join(buildDir, "check-strings.json"), `${JSON.stringify(rendered.strings, null, 2)}\n`, "utf8");
-const coverArt = await readFile(path.join(root, "src", "cover-art.svg"), "utf8");
+const coverArt = await coverImgTag(root);
 const passwordTemplate = (await readFile(path.join(root, "src", "password_template.html"), "utf8")).replace(
   "<!--COVER_ART-->",
-  coverArt.trim(),
+  coverArt,
 );
-if (!passwordTemplate.includes('class="cover-art"')) {
+if (!passwordTemplate.includes('class="cover-art"') || !passwordTemplate.includes(COVER_ALT)) {
   fail("密碼頁未有封面圖。今次不會發佈。");
 }
 const passwordTemplatePath = path.join(buildDir, "password_template.html");
