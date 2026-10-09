@@ -4,6 +4,7 @@ import { mkdtemp, access, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COVER_ALT, stripCoverDataUri } from "./lib/cover.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -90,8 +91,13 @@ async function expectDemo(label, env, hidden) {
     process.exit(1);
   }
   const html = await readFile(path.join(dir, "dist", "index.html"), "utf8");
-  if (html.includes("彩虹嘅應許") || html.includes("data:image") || hidden.some((value) => value && html.includes(value))) {
+  const visible = await stripCoverDataUri(root, html);
+  if (visible.includes("彩虹嘅應許") || visible.includes("data:image") || hidden.some((value) => value && html.includes(value))) {
     console.error(`${label}：網頁含有未加密內容。`);
+    process.exit(1);
+  }
+  if (!html.includes(COVER_ALT)) {
+    console.error(`${label}：密碼頁未有封面。`);
     process.exit(1);
   }
   if (!html.includes("記住密碼")) {

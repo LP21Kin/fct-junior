@@ -72,13 +72,16 @@ main.wrap {
 
 .cover-frame {
   margin: 0 -16px 12px;
-  background: #d7f1ff;
+  background: #fff;
+  line-height: 0;
 }
 
 .cover-art {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 2000 / 1068;
+  object-fit: cover;
 }
 
 .hero h1 {

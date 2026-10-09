@@ -10,6 +10,7 @@ import { importDriveWeeks, parseWeekFolderName } from "./lib/drive.mjs";
 import { compressPhoto } from "./lib/compress.mjs";
 import { loadWeeks } from "./lib/weeks.mjs";
 import { renderSite } from "./lib/render.mjs";
+import { stripCoverDataUri } from "./lib/cover.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const email = "reader@example.iam.gserviceaccount.com";
@@ -328,7 +329,8 @@ try {
   assert(outputIsClean(output), "建置輸出洩漏了秘密或檔名。");
   const html = await readFile(path.join(buildDir, "dist", "index.html"), "utf8");
   assert(!html.includes("測試彩虹") && !html.includes("測試手工"), "加密頁仍可讀到活動名稱。");
-  assert(!html.includes("shot-") && !html.includes("data:image"), "加密頁仍可讀到相片或檔名。");
+  const visible = await stripCoverDataUri(root, html);
+  assert(!html.includes("shot-") && !visible.includes("data:image"), "加密頁仍可讀到相片或檔名。");
   assert(!html.includes("SECRET-LOCATION-MARKER"), "加密頁含有隱藏位置資料。");
   const published = await readdir(path.join(buildDir, "dist"));
   assert(published.every((name) => !/\.(jpe?g|png|webp|gif)$/i.test(name)), "輸出不應有圖片檔。");
