@@ -251,7 +251,14 @@ try {
   const rendered = await renderSite({ root, weeks, demoMode: false });
   assert(rendered.html.includes("測試彩虹"), "頁面應顯示活動名稱。");
   assert(rendered.html.includes("活動相片 1"), "頁面應有編號說明。");
-  assert(!rendered.html.includes("金句") && !rendered.html.includes(">重點<"), "沒有金句同重點時不應顯示。");
+  assert(!rendered.html.includes('class="verse-label">金句</figcaption>'), "沒有每週金句時不應顯示。");
+  assert(!rendered.html.includes(">重點<"), "沒有重點時不應顯示。");
+  assert(rendered.html.includes("溫馨提示"), "解鎖後應有溫馨提示。");
+  assert(rendered.html.includes("呢度只畀初級團家長睇 💛 私人小天地，唔對外公開；請大家唔好轉發，一齊保護小朋友🙏🏻"), "溫馨提示正文不對。");
+  assert(rendered.html.includes("團契金句"), "常設團契金句應顯示。");
+  assert(rendered.html.includes("小小門徒・大大榜樣"), "團契金句引導語不對。");
+  assert(rendered.html.includes("「不可叫人小看你年輕，總要在言語、行為、愛心、信心、清潔上，都作信徒的榜樣。」— 提摩太前書 4:12"), "團契金句經文不對。");
+  assert(rendered.strings.includes("團契金句") && rendered.strings.includes("溫馨提示"), "明文清單應包括新文案。");
   assert(!rendered.html.includes("shot-") && !rendered.html.includes("plain.jpg"), "頁面不應有原本檔名。");
   assert(!rendered.html.includes("SECRET-LOCATION-MARKER"), "頁面不應有隱藏位置資料。");
 } finally {

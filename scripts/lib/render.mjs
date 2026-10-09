@@ -2,6 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { compressPhoto } from "./compress.mjs";
 
+const PRIVACY_TITLE = "溫馨提示";
+const PRIVACY_BODY = "呢度只畀初級團家長睇 💛 私人小天地，唔對外公開；請大家唔好轉發，一齊保護小朋友🙏🏻";
+const FELLOWSHIP_TITLE = "團契金句";
+const FELLOWSHIP_LEAD = "小小門徒・大大榜樣";
+const FELLOWSHIP_VERSE = "「不可叫人小看你年輕，總要在言語、行為、愛心、信心、清潔上，都作信徒的榜樣。」— 提摩太前書 4:12";
+
 const UI_STRINGS = [
   "今週周會",
   "活動回顧",
@@ -18,6 +24,11 @@ const UI_STRINGS = [
   "每週聚會回顧，只供家長睇",
   "今次未有代禱事項。",
   "fukchuen-junior-v1",
+  PRIVACY_TITLE,
+  PRIVACY_BODY,
+  FELLOWSHIP_TITLE,
+  FELLOWSHIP_LEAD,
+  FELLOWSHIP_VERSE,
 ];
 
 export function escapeHtml(value) {
@@ -141,6 +152,21 @@ export async function renderSite({ root, weeks, demoMode }) {
   const banner = demoMode
     ? `<p class="demo-banner" role="status">呢個係試用示範。文字同圖畫都係假的，唔係真聚會紀錄。</p>`
     : "";
+  const privacyNotice = `<aside class="privacy-notice" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">${escapeHtml(PRIVACY_TITLE)}</h2>
+      <p>${escapeHtml(PRIVACY_BODY)}</p>
+    </aside>`;
+  const fellowshipVerse = `<section class="fellowship" aria-labelledby="fellowship-title">
+      <div class="stripe" aria-hidden="true"></div>
+      <div class="fellowship-body">
+        ${miniCross()}
+        <h2 id="fellowship-title">${escapeHtml(FELLOWSHIP_TITLE)}</h2>
+        <p class="fellowship-lead">${escapeHtml(FELLOWSHIP_LEAD)}</p>
+        <blockquote>
+          <p>${escapeHtml(FELLOWSHIP_VERSE)}</p>
+        </blockquote>
+      </div>
+    </section>`;
 
   const html = `<!DOCTYPE html>
 <html lang="zh-Hant-HK">
@@ -161,6 +187,8 @@ export async function renderSite({ root, weeks, demoMode }) {
         <p class="tagline">每週聚會回顧，只供家長睇</p>
       </div>
     </header>
+    ${privacyNotice}
+    ${fellowshipVerse}
     <section class="panel this-week" style="--accent:${latest.themeColor}" aria-labelledby="this-week-title">
       <div class="panel-top">
         <span class="pill">今週周會</span>
