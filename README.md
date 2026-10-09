@@ -67,7 +67,7 @@ https://lp21kin.github.io/fct-junior/
 
 發佈嗰陣先會下載相片，壓縮到大約 200–300KB，去掉拍攝位置等隱藏資料，嵌進網頁，然後加密。下載嘅相片不會寫入呢個公開專案，亦不會留喺發佈檔案入面。
 
-未設定下面個 secret 之前，網站繼續用假示範，不會失敗。secret 設定咗但係讀唔到 Drive，發佈會失敗，不會把假示範當成真相片發佈。
+未設定 `DRIVE_SERVICE_ACCOUNT_JSON` 之前，網站繼續用假示範，不會失敗。服務帳戶 secret 設定咗，但係未設定 `DRIVE_FOLDER_ID`，或者讀唔到 Drive，發佈會失敗收埋，不會把假示範當成真相片發佈，亦不會用任何寫死喺程式入面嘅資料夾。
 
 ### 只需做一次
 
@@ -87,17 +87,22 @@ https://lp21kin.github.io/fct-junior/
 14. 返去公開專案 `fct-junior` → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**。
 15. Name 填 `DRIVE_SERVICE_ACCOUNT_JSON`。Secret 貼上成個 JSON 檔內容，由 `{` 到 `}`。
 16. 撳 **Add secret**。
-17. 刪走或者收好電腦上嘅 json 檔。
+17. 再撳 **New repository secret**。Name 一定要填 `DRIVE_FOLDER_ID`。
+18. Secret 填 Drive **父資料夾**嘅編號。呢個唔係資料夾個名，亦唔係成個網址。
+19. 撳 **Add secret**。
+20. 刪走或者收好電腦上嘅 json 檔。
 
-唔好把 JSON 檔或者密碼貼去聊天、電郵、或者 pull request。`client_email` 只用於 Drive 嘅「共用」。
+點樣搵編號：用瀏覽器打開你個 Drive 父資料夾（例如「26-27_初級團周會活動照片」）。網址會好似 `https://drive.google.com/drive/folders/` 後面跟一串字。淨係複製 `/folders/` 後面嗰串，貼入 `DRIVE_FOLDER_ID`。唔好貼成個網址。
+
+冇呢個 secret、留空，或者編號格式唔啱，發佈會失敗收埋，不會發佈。程式冇預設資料夾，唔好把真正編號寫入說明或者程式碼。
+
+唔好把 JSON 檔、資料夾編號或者密碼貼去聊天、電郵、或者 pull request。`client_email` 只用於 Drive 嘅「共用」。
 
 跟住去 **Actions** → **發佈加密網站** → **Run workflow**。
 
 之後每個星期：喺同一個 Drive 資料夾開新子資料夾，放入 JPEG，再撳一次 **Run workflow**。
 
-如果想換另一個資料夾，可以再加一個 secret，名稱 `DRIVE_FOLDER_ID`，內容係新資料夾個編號。留空就用而家呢個。
-
-如果已經設定 `DRIVE_SERVICE_ACCOUNT_JSON`，網站會用 Drive，不會再用下面嘅私人 GitHub 專案。
+如果已經設定 `DRIVE_SERVICE_ACCOUNT_JSON`，網站會用 Drive，不會再用下面嘅私人 GitHub 專案。要讀到 Drive，`DRIVE_FOLDER_ID` 都一定要設定。
 
 ## 另一個方法：放喺私人 GitHub 專案
 
@@ -203,7 +208,7 @@ https://lp21kin.github.io/fct-junior/
 
 ## 點樣加密
 
-1. GitHub Actions 用 `SITE_PASSWORD` 做密碼。如果有 `DRIVE_SERVICE_ACCOUNT_JSON`，會先讀私人 Drive，讀完就刪走下載嘅相片。
+1. GitHub Actions 用 `SITE_PASSWORD` 做密碼。如果有 `DRIVE_SERVICE_ACCOUNT_JSON`，會先用 secret `DRIVE_FOLDER_ID` 讀私人 Drive，讀完就刪走下載嘅相片。冇資料夾編號就不會發佈。
 2. 程式將每週文字同相片（相片先變成網頁入面嘅資料）合成一個頁面。
 3. [StatiCrypt](https://github.com/robinmoisson/staticrypt) 用 AES-256 加密成個頁面。
 4. 公開出嚟嘅只係密碼頁。正確密碼先會喺家長自己嘅瀏覽器入面解開。

@@ -38,6 +38,10 @@ for (const file of files) {
   if (bytes.includes(pemMarker) || bytes.includes(jsonMarker)) {
     fail(`${file} 含有服務帳戶密鑰。`);
   }
+  const defaultFolderMarker = Buffer.from(["DEFAULT", "DRIVE", "FOLDER", "ID"].join("_"));
+  if (bytes.includes(defaultFolderMarker)) {
+    fail(`${file} 唔可以再有預設 Drive 資料夾編號。`);
+  }
   const sample = bytes.subarray(0, 16);
   for (const item of magic) {
     if (sample.subarray(0, item.bytes.length).equals(item.bytes)) {
@@ -50,11 +54,11 @@ for (const file of files) {
 }
 
 const workflow = readFileSync(".github/workflows/pages.yml", "utf8");
-for (const required of ["secrets.SITE_PASSWORD", "secrets.DRIVE_SERVICE_ACCOUNT_JSON", "workflow_dispatch", "verify-published.mjs", "actions/deploy-pages", "path: dist"]) {
+for (const required of ["secrets.SITE_PASSWORD", "secrets.DRIVE_SERVICE_ACCOUNT_JSON", "secrets.DRIVE_FOLDER_ID", "DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}", "workflow_dispatch", "verify-published.mjs", "actions/deploy-pages", "path: dist"]) {
   if (!workflow.includes(required)) fail(`發佈流程缺少 ${required}`);
 }
 if (!/branches:\s*\[main\]/.test(workflow)) fail("發佈流程必須只在 main 分支推送時運行。");
-if (/echo\s+["']?\$\{?SITE_PASSWORD/.test(workflow) || /echo\s+.*DRIVE_SERVICE_ACCOUNT_JSON/.test(workflow) || /--password\s+\S+/.test(workflow)) {
+if (/echo\s+["']?\$\{?SITE_PASSWORD/.test(workflow) || /echo\s+.*DRIVE_SERVICE_ACCOUNT_JSON/.test(workflow) || /echo\s+.*DRIVE_FOLDER_ID/.test(workflow) || /--password\s+\S+/.test(workflow)) {
   fail("發佈流程似乎會顯示或寫入密碼。");
 }
 if (workflow.includes("DRIVE_TOKEN_URL") || workflow.includes("DRIVE_API_URL")) {

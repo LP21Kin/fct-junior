@@ -50,6 +50,7 @@ jobs:
         env:
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
           DRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.DRIVE_SERVICE_ACCOUNT_JSON }}
+          # 父資料夾編號只可以來自 secret。唔好 echo，亦都唔好印出個值。
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
           CONTENT_REPO: ${{ secrets.CONTENT_REPO }}
           CONTENT_READ_TOKEN: ${{ secrets.CONTENT_READ_TOKEN }}

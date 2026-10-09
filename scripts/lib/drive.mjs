@@ -2,7 +2,6 @@ import { createSign } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export const DEFAULT_DRIVE_FOLDER_ID = "1C_LqSgRMcvqpzo-_s2p2AjS9gaSvVOJg";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const TOKEN_AUDIENCE = "https://oauth2.googleapis.com/token";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -74,9 +73,12 @@ function loopbackOrDefault(value, fallback) {
 }
 
 export function driveSettings(env = process.env) {
-  const folderId = String(env.DRIVE_FOLDER_ID || "").trim() || DEFAULT_DRIVE_FOLDER_ID;
+  const folderId = String(env.DRIVE_FOLDER_ID ?? "").trim();
+  if (!folderId) {
+    throw new DriveError("未設定 DRIVE_FOLDER_ID。Kin 要喺 GitHub Actions 加入 secret DRIVE_FOLDER_ID（Drive 父資料夾編號）。今次不會發佈。");
+  }
   if (!/^[A-Za-z0-9_-]{10,}$/.test(folderId)) {
-    throw new DriveError("Drive 資料夾編號格式唔啱。今次不會發佈。");
+    throw new DriveError("DRIVE_FOLDER_ID 格式唔啱。Kin 要喺 GitHub Actions secret DRIVE_FOLDER_ID 填正確嘅 Drive 父資料夾編號。今次不會發佈。");
   }
   return {
     folderId,
