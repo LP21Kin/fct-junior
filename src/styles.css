@@ -265,24 +265,52 @@ main.wrap {
 
 .photo-grid figure { margin: 0; min-width: 0; }
 
-.photo-button {
+.slideshow {
+  margin: 12px 0 0;
+}
+
+.slideshow figcaption {
+  margin-top: 6px;
+  text-align: center;
+  color: #45606f;
+  font-size: 0.95rem;
+}
+
+.photo-frame {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
-  padding: 0;
+  padding: 7px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 20px;
   overflow: hidden;
-  background: #eef6fb;
+  background-color: #fff6ea;
+  background-image:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent, #7ec8e3) 40%, #fffaf3),
+      color-mix(in srgb, #e7f6ee 58%, var(--accent, #7ec8e3)));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 0 0 1px color-mix(in srgb, var(--accent, #c9b79a) 32%, #f0e6d6);
   cursor: pointer;
 }
 
-.photo-button img {
+.photo-button { aspect-ratio: 1; }
+
+.slideshow-photo {
+  aspect-ratio: 4 / 3;
+  padding: 10px;
+}
+
+.photo-frame img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 14px;
+  background: #fff;
 }
+
+.slideshow-photo img:not([src]) { visibility: hidden; }
 
 .photo-grid figcaption {
   margin-top: 6px;
@@ -384,6 +412,7 @@ html.lightbox-open, html.lightbox-open body { overflow: hidden; }
 @media (min-width: 720px) {
   .photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .panel { padding: 24px 24px 20px; }
+  .slideshow-photo { aspect-ratio: 16 / 9; }
 }
 
 @media (min-width: 900px) {

@@ -69,6 +69,10 @@ try {
     console.error("密碼頁沒有「記住密碼」。");
     process.exit(1);
   }
+  if (!html.includes("請輸入密碼。呢度只給家長了解團契活動。不會對外公開") || html.includes("呢度只俾家長睇")) {
+    console.error("密碼頁引言未更新。");
+    process.exit(1);
+  }
   console.log("加密往返測試通過。");
 } finally {
   await rm(dir, { recursive: true, force: true });

@@ -209,7 +209,7 @@ const encrypt = await run(process.execPath, [
   "--remember", "180",
   "--template", passwordTemplatePath,
   "--template-title", "福泉堂 初級團",
-  "--template-instructions", "請輸入密碼。呢度只俾家長睇。",
+  "--template-instructions", "請輸入密碼。呢度只給家長了解團契活動。不會對外公開",
   "--template-placeholder", "密碼",
   "--template-button", "進入",
   "--template-remember", "記住密碼",
