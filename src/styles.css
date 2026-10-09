@@ -101,6 +101,75 @@ main.wrap {
   font-weight: 700;
 }
 
+.privacy-notice {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fff4c8 0%, #ffe4ea 100%);
+  border: 2px solid #efc27a;
+  box-shadow: 0 10px 28px rgba(180, 120, 60, 0.14);
+}
+
+.privacy-notice h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  color: #7a4a22;
+}
+
+.privacy-notice p {
+  margin: 6px 0 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.fellowship {
+  --accent: #f4e2b4;
+  background: rgba(255, 252, 246, 0.97);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.fellowship-body {
+  padding: 14px 18px 18px;
+  text-align: center;
+}
+
+.fellowship .mini-cross {
+  position: static;
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 6px;
+}
+
+.fellowship h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  color: #6b4520;
+}
+
+.fellowship-lead {
+  margin: 4px 0 0;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #6b4520;
+}
+
+.fellowship blockquote {
+  margin: 12px auto 0;
+  max-width: 40rem;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff8e8;
+}
+
+.fellowship blockquote p {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
 .panel, .album {
   background: var(--card);
   border-radius: 28px;
