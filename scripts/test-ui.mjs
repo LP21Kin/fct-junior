@@ -49,7 +49,8 @@ const rendered = await renderSite({ root, weeks, demoMode: true });
 const { html, strings } = rendered;
 if (!strings.includes("相簿會自動換相")) fail("加密字串清單未有輪播提示。");
 if (strings.includes(lead)) fail("密碼頁公開文字唔應該放入加密對照清單。");
-if (!html.includes("相簿會自動換相，撳一張相可以放大。")) fail("相簿說明未有自動換相。");
+if (!html.includes("相簿會自動換相，撳相框可以放大。輪到影片會靜音播放。")) fail("相簿說明未有自動換相。");
+if (html.includes("photo-grid") || html.includes("photo-button")) fail("不應再顯示細縮圖。");
 if (!html.includes(COVER_ALT) || !html.includes('class="cover-art"')) fail("入面頁未有封面 A。");
 if (html.includes("cover-art.svg")) fail("入面頁仲用舊封面。");
 const slideshows = [...html.matchAll(/<figure class="slideshow"[\s\S]*?<\/figure>/g)];
@@ -60,12 +61,20 @@ for (const week of weeks) {
   if (block[0].includes(" src=")) fail(`${week.date} 輪播重複嵌咗圖片。`);
   if (!html.includes(`class="album" style="--accent:${week.themeColor}"`)) fail(`${week.date} 未有主題色。`);
 }
-const framed = html.match(/class="photo-frame photo-button"/g) || [];
+const frames = html.match(/class="photo-frame slideshow-photo"/g) || [];
+if (frames.length !== weeks.length) fail("每個週次都要有一個大相框。");
 const photoCount = weeks.reduce((sum, week) => sum + week.photos.length, 0);
-if (framed.length !== photoCount) fail("相格未有柔和相框。");
+const sources = html.match(/class="media-source"/g) || [];
+if (sources.length !== photoCount) fail("媒體來源數量不對。");
+if (!html.includes('class="media-sources" hidden')) fail("媒體來源應收埋，唔好顯示細圖。");
+if (html.includes('data-kind="video"')) fail("示範週次不應有影片。");
+if (!html.includes('id="lightbox-video"') || !html.includes('id="lightbox-full"')) fail("未有影片放大同全螢幕。");
 if (!html.includes("color-mix(in srgb, var(--accent, #7ec8e3) 40%, #fffaf3)")) fail("相框未有用每週主題色。");
 if (!html.includes("function syncSlideshow()") || !html.includes("function nextSlideIndex(length, current, random)")) {
   fail("入面頁未有輪播程式。");
+}
+if (!siteSource.includes("video.muted = true") || !siteSource.includes("playMuted")) {
+  fail("影片未有靜音播放。");
 }
 
 console.log("介面檢查通過：密碼引言、輪播同相框都齊。");

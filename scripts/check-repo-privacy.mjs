@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-const imageName = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/i;
+const imageName = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?|mp4|m4v|mov|webm|mkv)$/i;
 const blockedPrefixes = ["content/", "dist/", "build/", "private-content/"];
 const coverPath = "src/cover-art.jpg";
 const coverMaxBytes = 600 * 1024;
@@ -27,7 +27,7 @@ for (const file of files) {
     fail(`${file} 不應出現在公開專案。`);
   }
   if (imageName.test(normalized) && !isCover) fail(`${file} 係圖片檔。公開專案不可以提交相片。`);
-  if (normalized.includes("/photos/")) fail(`${file} 位於相片資料夾。`);
+  if (normalized.includes("/photos/") || normalized.includes("/videos/")) fail(`${file} 位於活動媒體資料夾。`);
   if (normalized.endsWith(".env") || normalized.includes(".env.")) fail(`${file} 可能含有密碼。`);
 
   const full = path.resolve(file);
@@ -60,6 +60,12 @@ for (const file of files) {
   }
   if (sample.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP") {
     fail(`${file} 內容似 WEBP 圖片。`);
+  }
+  if (bytes.length >= 12 && bytes.subarray(4, 8).toString() === "ftyp") {
+    fail(`${file} 內容似影片。`);
+  }
+  if (sample[0] === 0x1a && sample[1] === 0x45 && sample[2] === 0xdf && sample[3] === 0xa3) {
+    fail(`${file} 內容似影片。`);
   }
 }
 

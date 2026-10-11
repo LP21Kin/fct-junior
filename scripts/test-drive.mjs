@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createVerify, generateKeyPairSync, randomBytes } from "node:crypto";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -42,6 +42,30 @@ const marked = await sharp({
   exif: { IFD0: { ImageDescription: "SECRET-LOCATION-MARKER" } },
 }).toBuffer();
 assert(marked.includes(Buffer.from("SECRET-LOCATION-MARKER")), "測試圖未有隱藏標記。");
+
+async function sampleClip(args, filename) {
+  const dir = await mkdtemp(path.join(tmpdir(), "fct-clip-"));
+  const file = path.join(dir, filename);
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn("ffmpeg", ["-y", ...args, file], { stdio: ["ignore", "ignore", "pipe"] });
+      child.on("error", reject);
+      child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg ${code}`))));
+    });
+    return await readFile(file);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+const clip = await sampleClip(
+  ["-f", "lavfi", "-i", "color=c=0x7ec8e3:s=160x120:d=1", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an"],
+  "clip.mp4",
+);
+const webm = await sampleClip(
+  ["-f", "lavfi", "-i", "color=c=0xf6d56b:s=160x120:d=1", "-c:v", "libvpx-vp9", "-b:v", "60k", "-an"],
+  "clip.webm",
+);
 
 const compressed = await compressPhoto(marked, "01.jpg");
 assert(!compressed.buffer.includes(Buffer.from("SECRET-LOCATION-MARKER")), "壓縮後仍有隱藏標記。");
@@ -86,6 +110,7 @@ function filesFor(mode) {
     { id: "weekNotes001", parent: folderId, name: "hello", mimeType: "application/vnd.google-apps.folder" },
     { id: "looseJpeg01", parent: folderId, name: "random.jpg", mimeType: "image/jpeg", bytes: tiny },
     { id: "pngOnly0001", parent: "weekEmpty001", name: "icon.png", mimeType: "image/png", bytes: Buffer.from("png") },
+    { id: "emptyFakeVid", parent: "weekEmpty001", name: "notes.mp4", mimeType: "video/mp4", bytes: Buffer.from("not a video") },
     { id: "rainbowJpeg1", parent: "weekRainbow1", name: "plain.jpg", mimeType: "image/jpeg", bytes: marked },
     { id: "rainbowFake01", parent: "weekRainbow1", name: "wrong.jpg", mimeType: "image/jpeg", bytes: Buffer.from("not a photo") },
     { id: "rainbowPng001", parent: "weekRainbow1", name: "notes.png", mimeType: "image/png", bytes: Buffer.from("png") },
@@ -108,14 +133,40 @@ function filesFor(mode) {
       bytes: tiny,
     });
   }
-  for (let index = 1; index <= 22; index += 1) {
+  if (mode === "huge-video") {
     files.push({
-      id: `shot${String(index).padStart(2, "0")}`,
+      id: "hugeVid00001",
+      parent: "weekRainbow1",
+      name: "big.mp4",
+      mimeType: "video/mp4",
+      size: 90 * 1024 * 1024,
+      bytes: clip,
+    });
+  }
+  files.push(
+    { id: "rainbowClip01", parent: "weekRainbow1", name: "clip-01.mp4", mimeType: "video/mp4", bytes: clip },
+    { id: "rainbowClip02", parent: "weekRainbow1", name: "clip-02.webm", mimeType: "video/webm", bytes: webm },
+  );
+  const photoCount = mode === "cap" ? 55 : 22;
+  for (let index = 1; index <= photoCount; index += 1) {
+    files.push({
+      id: `shot${String(index).padStart(3, "0")}`,
       parent: "weekCraft001",
       name: `shot-${String(index).padStart(2, "0")}.jpg`,
       mimeType: "image/jpeg",
       bytes: tiny,
     });
+  }
+  if (mode === "cap") {
+    for (let index = 1; index <= 3; index += 1) {
+      files.push({
+        id: `extraClip${index}`,
+        parent: "weekCraft001",
+        name: `extra-${index}.mp4`,
+        mimeType: "video/mp4",
+        bytes: clip,
+      });
+    }
   }
   return files;
 }
@@ -218,6 +269,9 @@ function outputIsClean(text) {
     && !text.includes("fixture-token")
     && !text.includes("shot-")
     && !text.includes("plain.jpg")
+    && !text.includes("clip-")
+    && !text.includes("notes.mp4")
+    && !text.includes("extra-")
     && !text.includes("SECRET-LOCATION-MARKER")
     && !text.includes("測試手工")
     && !text.includes(password)
@@ -237,21 +291,36 @@ try {
     },
   });
   assert(summary.weeks === 2, "週次數量不對。");
-  assert(summary.photos === 21, "相片數量不對。");
-  assert(summary.capped, "多過 20 張時應有上限。");
+  assert(summary.photos === 23, "相片數量不對。");
+  assert(summary.videos === 2, "影片數量不對。");
+  assert(!summary.capped, "22 張不應截斷。");
+  assert(!summary.videosCapped, "兩段影片不應截斷。");
   const craftJson = await readFile(path.join(libraryDir, "weeks", "2026-09-19", "week.json"), "utf8");
   assert(!craftJson.includes("shot-"), "week.json 不應有原本檔名。");
-  assert(craftJson.includes("活動相片 20"), "說明應係活動相片編號。");
-  assert(!craftJson.includes("活動相片 21"), "不應使用第 21 張。");
+  assert(craftJson.includes("活動相片 22"), "說明應係活動相片編號。");
+  assert(!craftJson.includes("活動相片 23"), "不應漏掉第 22 張，亦唔好超出。");
   assert(!craftJson.includes("memoryVerse"), "Drive 週次不應捏造金句。");
+  assert(!craftJson.includes("videos"), "沒有影片嘅週次不應有影片欄。");
   const names = await readdir(path.join(libraryDir, "weeks", "2026-09-19", "photos"));
-  assert(names.length === 20 && names.every((name) => /^\d{2}\.jpg$/.test(name)), "相片應改成編號檔名。");
-  assert(!(await readdir(path.join(libraryDir, "weeks"))).includes("2026-08-01"), "沒有 JPEG 的週次不應留下。");
+  assert(names.length === 22 && names.every((name) => /^\d{2}\.jpg$/.test(name)), "相片應改成編號檔名。");
+  const rainbowJson = await readFile(path.join(libraryDir, "weeks", "2026-10-04", "week.json"), "utf8");
+  assert(!rainbowJson.includes("clip-") && !rainbowJson.includes("notes.mp4"), "week.json 不應有原本影片檔名。");
+  assert(rainbowJson.includes("活動影片 1") && rainbowJson.includes("活動影片 2"), "影片說明應係編號。");
+  assert(!rainbowJson.includes("活動影片 3"), "不應使用第 3 段影片。");
+  const videoNames = await readdir(path.join(libraryDir, "weeks", "2026-10-04", "videos"));
+  assert(videoNames.includes("v01.mp4") && videoNames.includes("v02.webm") && videoNames.length === 2, "影片應改成編號檔名。");
+  assert(!(await readdir(path.join(libraryDir, "weeks"))).includes("2026-08-01"), "沒有可用媒體的週次不應留下。");
   const weeks = await loadWeeks(libraryDir, { drive: true });
   assert(weeks[0].title === "測試彩虹" && weeks[0].memoryVerse === "" && weeks[0].points.length === 0, "最新一週應只顯示活動名稱。");
+  assert(weeks[0].videos.length === 2 && weeks[1].videos.length === 0, "影片應跟返所屬週次。");
   const rendered = await renderSite({ root, weeks, demoMode: false });
   assert(rendered.html.includes("測試彩虹"), "頁面應顯示活動名稱。");
   assert(rendered.html.includes("活動相片 1"), "頁面應有編號說明。");
+  assert(rendered.html.includes("data:video/mp4;base64,"), "影片應嵌進網頁。");
+  assert(rendered.html.includes("1 張 · 2 段影片"), "週次應同時顯示相片同影片數量。");
+  assert(!rendered.html.includes("photo-grid") && !rendered.html.includes("photo-button"), "不應有細縮圖。");
+  assert(!rendered.html.includes("clip-"), "頁面不應有原本影片檔名。");
+  assert((rendered.html.match(/data-kind="video"/g) || []).length === 2, "大相框來源應有兩段影片。");
   assert(!rendered.html.includes('class="verse-label">金句</figcaption>'), "沒有每週金句時不應顯示。");
   assert(!rendered.html.includes(">重點<"), "沒有重點時不應顯示。");
   assert(rendered.html.includes("溫馨提示"), "解鎖後應有溫馨提示。");
@@ -355,28 +424,112 @@ try {
     console.error(output.split(pem).join("[已隱藏]").split(password).join("[已隱藏]"));
     process.exit(1);
   }
-  assert(output.includes("已從 Google Drive 讀取 2 個週次、21 張相片。"), "成功訊息不對。");
-  assert(output.includes("只用咗 20 張"), "應講明只用 20 張。");
+  assert(output.includes("已從 Google Drive 讀取 2 個週次、23 張相片、2 段影片。"), "成功訊息不對。");
+  assert(!output.includes("只用咗 50 張"), "22 張不應截斷。");
+  assert(!output.includes("只用咗 2 段"), "兩段影片不應截斷。");
   assert(outputIsClean(output), "建置輸出洩漏了秘密或檔名。");
   const html = await readFile(path.join(buildDir, "dist", "index.html"), "utf8");
   assert(!html.includes("測試彩虹") && !html.includes("測試手工"), "加密頁仍可讀到活動名稱。");
   const visible = await stripCoverDataUri(root, html);
-  assert(!html.includes("shot-") && !visible.includes("data:image"), "加密頁仍可讀到相片或檔名。");
+  assert(!html.includes("shot-") && !visible.includes("data:image") && !visible.includes("data:video"), "加密頁仍可讀到相片、影片或檔名。");
   assert(!html.includes("SECRET-LOCATION-MARKER"), "加密頁含有隱藏位置資料。");
+  assert(!html.includes("活動影片") && !html.includes("clip-"), "加密頁不應讀到影片說明或原本檔名。");
   const published = await readdir(path.join(buildDir, "dist"));
-  assert(published.every((name) => !/\.(jpe?g|png|webp|gif)$/i.test(name)), "輸出不應有圖片檔。");
+  assert(published.every((name) => !/\.(jpe?g|png|webp|gif|mp4|m4v|mov|webm)$/i.test(name)), "輸出不應有圖片或影片檔。");
   let leftover = false;
   try {
     const content = await readdir(path.join(buildDir, "content"), { recursive: true });
-    leftover = content.some((name) => String(name).toLowerCase().endsWith(".jpg"));
+    leftover = content.some((name) => /\.(jpe?g|mp4|m4v|mov|webm)$/i.test(String(name)));
   } catch {
     leftover = false;
   }
-  assert(!leftover, "下載嘅相片不應留喺內容資料夾。");
+  assert(!leftover, "下載嘅相片或影片不應留喺內容資料夾。");
 } finally {
   await new Promise((resolve) => okServer.server.close(resolve));
   await rm(buildDir, { recursive: true, force: true });
 }
+
+const capServer = await startServer("cap");
+const capDir = await mkdtemp(path.join(tmpdir(), "fct-drive-cap-"));
+try {
+  const capSummary = await importDriveWeeks({
+    jsonText: serviceAccount,
+    destDir: capDir,
+    env: { DRIVE_FOLDER_ID: folderId, DRIVE_TOKEN_URL: capServer.tokenUrl, DRIVE_API_URL: capServer.apiUrl },
+  });
+  assert(capSummary.capped, "多過 50 張時應有上限。");
+  assert(capSummary.videosCapped, "多過 2 段影片時應有上限。");
+  assert(capSummary.photos === 51, "相片上限應係 50 張再加其他週次。");
+  assert(capSummary.videos === 4, "每週最多 2 段影片。");
+  const cappedCraft = JSON.parse(await readFile(path.join(capDir, "weeks", "2026-09-19", "week.json"), "utf8"));
+  assert(cappedCraft.photos.length === 50 && cappedCraft.videos.length === 2, "截斷後應係 50 張相同 2 段影片。");
+  assert(!JSON.stringify(cappedCraft).includes("shot-") && !JSON.stringify(cappedCraft).includes("extra-"), "截斷後不應留下原本檔名。");
+  const cappedWeeks = await loadWeeks(capDir, { drive: true });
+  const craftWeek = cappedWeeks.find((week) => week.date === "2026-09-19");
+  assert(craftWeek.photos.length === 50 && craftWeek.videos.length === 2, "載入後仍應遵守上限。");
+} finally {
+  await new Promise((resolve) => capServer.server.close(resolve));
+  await rm(capDir, { recursive: true, force: true });
+}
+
+const hugeVideoServer = await startServer("huge-video");
+const hugeVideoDir = await mkdtemp(path.join(tmpdir(), "fct-drive-huge-video-"));
+try {
+  let failed = false;
+  try {
+    await importDriveWeeks({
+      jsonText: serviceAccount,
+      destDir: hugeVideoDir,
+      env: { DRIVE_FOLDER_ID: folderId, DRIVE_TOKEN_URL: hugeVideoServer.tokenUrl, DRIVE_API_URL: hugeVideoServer.apiUrl },
+    });
+  } catch (error) {
+    failed = error.message.includes("80MB") && error.message.includes("不會發佈");
+  }
+  assert(failed, "過大的影片應停止。");
+} finally {
+  await new Promise((resolve) => hugeVideoServer.server.close(resolve));
+  await rm(hugeVideoDir, { recursive: true, force: true });
+}
+
+async function expectLoadFailure(label, data, includes) {
+  const dir = await mkdtemp(path.join(tmpdir(), "fct-week-limit-"));
+  try {
+    const weekDir = path.join(dir, "weeks", data.date);
+    await mkdir(weekDir, { recursive: true });
+    await writeFile(path.join(weekDir, "week.json"), `${JSON.stringify(data)}\n`);
+    let failed = false;
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      await loadWeeks(dir, { drive: true });
+    } catch (error) {
+      failed = error.message.includes(includes) && error.message.includes("不會發佈");
+    } finally {
+      console.error = originalError;
+    }
+    if (failed) process.exitCode = 0;
+    assert(failed, label);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+await expectLoadFailure("相片上限", {
+  date: "2026-01-02",
+  title: "太多相",
+  themeColor: "#A9D4F5",
+  photos: Array.from({ length: 51 }, (_, index) => ({
+    file: `${String(index + 1).padStart(2, "0")}.jpg`,
+    caption: "活動相片",
+  })),
+}, "50");
+await expectLoadFailure("影片上限", {
+  date: "2026-01-03",
+  title: "太多片",
+  themeColor: "#A9D4F5",
+  photos: [],
+  videos: [1, 2, 3].map((number) => ({ file: `v0${number}.mp4`, caption: "活動影片" })),
+}, "2 段");
 
 await expectDriveFailure("deny", "讀唔到 Google Drive");
 await expectDriveFailure("bad-json", "唔係有效嘅 JSON");

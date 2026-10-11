@@ -31,6 +31,9 @@ jobs:
       - name: 安裝
         run: npm ci
 
+      - name: 安裝 ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: 確認公開專案沒有相片
         run: npm run check-privacy
 
@@ -63,8 +66,8 @@ jobs:
 
       - name: 確認沒有圖片檔
         run: |
-          if find dist -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.svg' -o -iname '*.heic' -o -iname '*.heif' \) | grep -q .; then
-            echo "::error::輸出含有圖片檔，已停止，不會發佈。"
+          if find dist -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.svg' -o -iname '*.heic' -o -iname '*.heif' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.mov' -o -iname '*.webm' \) | grep -q .; then
+            echo "::error::輸出含有圖片或影片檔，已停止，不會發佈。"
             exit 1
           fi
           test -f dist/index.html

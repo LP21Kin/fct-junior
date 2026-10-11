@@ -1,13 +1,19 @@
 import { createSign } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isVideoContainer } from "./compress.mjs";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const TOKEN_AUDIENCE = "https://oauth2.googleapis.com/token";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
-const MAX_PHOTOS = 20;
+const MAX_PHOTOS = 50;
+const MAX_VIDEOS = 2;
 const MAX_BYTES = 30 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const PHOTO_TOO_BIG = "有一張相片大過 30MB。請喺 Drive 入面換細張，今次不會發佈。";
+const VIDEO_TOO_BIG = "有一段影片大過 80MB。請剪短或者壓細，今次不會發佈。";
 const PALETTE = ["#7EC8E3", "#F6D56B", "#8FCB9B"];
+const VIDEO_MIME = new Set(["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"]);
 
 export class DriveError extends Error {
   constructor(message) {
@@ -182,7 +188,36 @@ function looksLikeJpeg(file) {
   return false;
 }
 
-async function downloadFile({ apiUrl, token, fileId, fetchImpl }) {
+function isVideoName(name) {
+  return /\.(mp4|m4v|mov|webm)$/i.test(String(name || ""));
+}
+
+function looksLikeVideo(file) {
+  const mime = String(file.mimeType || "");
+  if (mime === FOLDER_MIME || mime.startsWith("application/vnd.google-apps.")) return false;
+  if (looksLikeJpeg(file)) return false;
+  if (VIDEO_MIME.has(mime)) return true;
+  if ((mime === "application/octet-stream" || mime === "") && isVideoName(file.name)) return true;
+  return false;
+}
+
+function byName(a, b) {
+  return String(a.name).localeCompare(String(b.name), "en", { numeric: true, sensitivity: "base" });
+}
+
+function isJpeg(bytes) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+function videoExtension(bytes, originalName) {
+  const lower = String(originalName || "").toLowerCase();
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return "webm";
+  if (lower.endsWith(".mov")) return "mov";
+  if (lower.endsWith(".m4v")) return "m4v";
+  return "mp4";
+}
+
+async function downloadBytes({ apiUrl, token, fileId, fetchImpl, maxBytes, tooBigMessage }) {
   if (!/^[A-Za-z0-9_-]+$/.test(fileId)) {
     throw new DriveError("讀取 Google Drive 失敗。今次不會發佈。");
   }
@@ -193,14 +228,11 @@ async function downloadFile({ apiUrl, token, fileId, fetchImpl }) {
     headers: { authorization: `Bearer ${token}` },
   });
   if (response.status === 401 || response.status === 403) {
-    throw new DriveError("讀唔到 Google Drive 嘅相片。請檢查資料夾已分享俾服務帳戶（檢視者）。今次不會發佈。");
+    throw new DriveError("讀唔到 Google Drive 嘅相片或影片。請檢查資料夾已分享俾服務帳戶（檢視者）。今次不會發佈。");
   }
-  if (!response.ok) throw new DriveError("下載 Google Drive 相片失敗。今次不會發佈。");
+  if (!response.ok) throw new DriveError("下載 Google Drive 檔案失敗。今次不會發佈。");
   const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > MAX_BYTES) {
-    throw new DriveError("有一張相片大過 30MB。請喺 Drive 入面換細張，今次不會發佈。");
-  }
-  if (bytes.length < 3 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return null;
+  if (bytes.length > maxBytes) throw new DriveError(tooBigMessage);
   return bytes;
 }
 
@@ -235,49 +267,76 @@ export async function importDriveWeeks({
   }
 
   let photos = 0;
+  let videos = 0;
   let used = 0;
   let capped = false;
+  let videosCapped = false;
   const weeksDir = path.join(destDir, "weeks");
 
   for (const week of weeks) {
     const children = await listChildren({ apiUrl, token, parentId: week.id, fetchImpl });
-    const candidates = children
-      .filter((file) => looksLikeJpeg(file) && /^[A-Za-z0-9_-]+$/.test(String(file.id || "")))
-      .sort((a, b) => String(a.name).localeCompare(String(b.name), "en", { numeric: true, sensitivity: "base" }));
-    if (candidates.length > MAX_PHOTOS) capped = true;
-    const chosen = candidates.slice(0, MAX_PHOTOS);
-    const downloaded = [];
-    for (const file of chosen) {
+    const named = children.filter((file) => /^[A-Za-z0-9_-]+$/.test(String(file.id || "")));
+    const photoCandidates = named.filter(looksLikeJpeg).sort(byName);
+    const videoCandidates = named.filter(looksLikeVideo).sort(byName);
+    if (photoCandidates.length > MAX_PHOTOS) capped = true;
+    if (videoCandidates.length > MAX_VIDEOS) videosCapped = true;
+    const chosenPhotos = photoCandidates.slice(0, MAX_PHOTOS);
+    const chosenVideos = videoCandidates.slice(0, MAX_VIDEOS);
+    const downloadedPhotos = [];
+    for (const file of chosenPhotos) {
       const size = Number(file.size || 0);
-      if (size > MAX_BYTES) {
-        throw new DriveError("有一張相片大過 30MB。請喺 Drive 入面換細張，今次不會發佈。");
-      }
-      const bytes = await downloadFile({ apiUrl, token, fileId: file.id, fetchImpl });
-      if (!bytes) continue;
-      downloaded.push(bytes);
+      if (size > MAX_BYTES) throw new DriveError(PHOTO_TOO_BIG);
+      const bytes = await downloadBytes({
+        apiUrl, token, fileId: file.id, fetchImpl, maxBytes: MAX_BYTES, tooBigMessage: PHOTO_TOO_BIG,
+      });
+      if (!isJpeg(bytes)) continue;
+      downloadedPhotos.push(bytes);
     }
-    if (!downloaded.length) continue;
+    const downloadedVideos = [];
+    for (const file of chosenVideos) {
+      const size = Number(file.size || 0);
+      if (size > MAX_VIDEO_BYTES) throw new DriveError(VIDEO_TOO_BIG);
+      const bytes = await downloadBytes({
+        apiUrl, token, fileId: file.id, fetchImpl, maxBytes: MAX_VIDEO_BYTES, tooBigMessage: VIDEO_TOO_BIG,
+      });
+      if (!isVideoContainer(bytes)) continue;
+      downloadedVideos.push({ bytes, name: file.name });
+    }
+    if (!downloadedPhotos.length && !downloadedVideos.length) continue;
     const photoDir = path.join(weeksDir, week.date, "photos");
-    await mkdir(photoDir, { recursive: true });
-    const saved = downloaded.map((bytes, index) => {
+    const videoDir = path.join(weeksDir, week.date, "videos");
+    if (downloadedPhotos.length) await mkdir(photoDir, { recursive: true });
+    if (downloadedVideos.length) await mkdir(videoDir, { recursive: true });
+    const savedPhotos = downloadedPhotos.map((bytes, index) => {
       const filename = `${String(index + 1).padStart(2, "0")}.jpg`;
       return { filename, bytes, caption: `活動相片 ${index + 1}` };
     });
-    await Promise.all(saved.map((photo) => writeFile(path.join(photoDir, photo.filename), photo.bytes)));
+    const savedVideos = downloadedVideos.map((item, index) => {
+      const filename = `v${String(index + 1).padStart(2, "0")}.${videoExtension(item.bytes, item.name)}`;
+      return { filename, bytes: item.bytes, caption: `活動影片 ${index + 1}` };
+    });
+    await Promise.all([
+      ...savedPhotos.map((photo) => writeFile(path.join(photoDir, photo.filename), photo.bytes)),
+      ...savedVideos.map((video) => writeFile(path.join(videoDir, video.filename), video.bytes)),
+    ]);
     const colorIndex = Number(week.date.replaceAll("-", "")) % PALETTE.length;
     const weekJson = {
       date: week.date,
       title: week.title,
       themeColor: PALETTE[colorIndex],
-      photos: saved.map((photo) => ({ file: photo.filename, caption: photo.caption })),
+      photos: savedPhotos.map((photo) => ({ file: photo.filename, caption: photo.caption })),
     };
+    if (savedVideos.length) {
+      weekJson.videos = savedVideos.map((video) => ({ file: video.filename, caption: video.caption }));
+    }
     await writeFile(path.join(weeksDir, week.date, "week.json"), `${JSON.stringify(weekJson, null, 2)}\n`, "utf8");
-    photos += saved.length;
+    photos += savedPhotos.length;
+    videos += savedVideos.length;
     used += 1;
   }
 
   if (!used) {
-    throw new DriveError("Drive 週次入面搵唔到 JPEG 相片。今次不會發佈。");
+    throw new DriveError("Drive 週次入面搵唔到 JPEG 相片或者影片。今次不會發佈。");
   }
-  return { weeks: used, photos, capped };
+  return { weeks: used, photos, videos, capped, videosCapped };
 }

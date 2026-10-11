@@ -1,13 +1,15 @@
 const lightbox = document.getElementById("lightbox");
 const lightboxImg = document.getElementById("lightbox-img");
+const lightboxVideo = document.getElementById("lightbox-video");
 const lightboxCaption = document.getElementById("lightbox-caption");
 const lightboxCount = document.getElementById("lightbox-count");
 const prevButton = document.getElementById("lightbox-prev");
 const nextButton = document.getElementById("lightbox-next");
+const fullButton = document.getElementById("lightbox-full");
 const closeButton = document.querySelector(".lightbox-close");
 
 const albums = new Map();
-for (const button of document.querySelectorAll(".photo-button")) {
+for (const button of document.querySelectorAll(".media-source")) {
   const id = button.dataset.album;
   if (!albums.has(id)) albums.set(id, []);
   albums.get(id).push(button);
@@ -17,20 +19,60 @@ let currentAlbum = "";
 let currentIndex = 0;
 let lastFocus = null;
 
+function stopVideo(video) {
+  if (!video) return;
+  video.pause();
+  video.onended = null;
+  video.onloadedmetadata = null;
+  video.removeAttribute("src");
+  video.load();
+}
+
+function playMuted(video) {
+  video.muted = true;
+  video.defaultMuted = true;
+  video.setAttribute("muted", "");
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  const pending = video.play();
+  if (pending && typeof pending.catch === "function") pending.catch(() => {});
+}
+
 function showCurrent() {
   const items = albums.get(currentAlbum) || [];
   const button = items[currentIndex];
   if (!button) return;
-  const image = button.querySelector("img");
-  lightboxImg.src = image.src;
-  lightboxImg.alt = image.alt;
-  lightboxCaption.textContent = image.alt;
+  const caption = button.dataset.caption || "";
+  const kind = button.dataset.kind === "video" ? "video" : "image";
+  lightboxCaption.textContent = caption;
   lightboxCount.textContent = `${currentIndex + 1} / ${items.length}`;
   prevButton.disabled = currentIndex === 0;
   nextButton.disabled = currentIndex === items.length - 1;
+  if (kind === "video") {
+    const source = button.querySelector("video");
+    lightboxImg.hidden = true;
+    lightboxImg.removeAttribute("src");
+    lightboxImg.alt = "";
+    lightboxVideo.hidden = false;
+    lightboxVideo.controls = true;
+    lightboxVideo.src = source ? source.src : "";
+    playMuted(lightboxVideo);
+    return;
+  }
+  stopVideo(lightboxVideo);
+  lightboxVideo.hidden = true;
+  const image = button.querySelector("img");
+  lightboxImg.hidden = false;
+  lightboxImg.src = image.src;
+  lightboxImg.alt = image.alt;
+}
+
+function pauseSlideshowVideos() {
+  for (const video of document.querySelectorAll(".slideshow-photo video")) video.pause();
 }
 
 function openLightbox(button) {
+  pauseSlideshowVideos();
   currentAlbum = button.dataset.album;
   currentIndex = Number(button.dataset.index);
   lastFocus = button;
@@ -44,6 +86,8 @@ function openLightbox(button) {
 function closeLightbox() {
   lightbox.hidden = true;
   lightboxImg.removeAttribute("src");
+  stopVideo(lightboxVideo);
+  lightboxVideo.hidden = true;
   document.documentElement.classList.remove("lightbox-open");
   if (lastFocus) lastFocus.focus();
   syncSlideshow();
@@ -57,13 +101,20 @@ function step(delta) {
   showCurrent();
 }
 
-document.querySelectorAll(".photo-button").forEach((button) => {
-  button.addEventListener("click", () => openLightbox(button));
-});
-
 closeButton.addEventListener("click", closeLightbox);
 prevButton.addEventListener("click", () => step(-1));
 nextButton.addEventListener("click", () => step(1));
+fullButton.addEventListener("click", () => {
+  const target = lightboxVideo.hidden ? lightboxImg : lightboxVideo;
+  const request = target.requestFullscreen || target.webkitRequestFullscreen || target.webkitEnterFullscreen;
+  if (typeof request !== "function") return;
+  try {
+    const result = request.call(target);
+    if (result && typeof result.catch === "function") result.catch(() => {});
+  } catch {
+    // 有啲瀏覽器唔支援全螢幕，lightbox 本身已經放大。
+  }
+});
 
 lightbox.addEventListener("click", (event) => {
   if (event.target === lightbox) closeLightbox();
@@ -106,48 +157,105 @@ function slideshowPaused() {
   return motionQuery.matches || !lightbox.hidden;
 }
 
+const stageTimers = new WeakMap();
+
+function clearStageTimer(stage) {
+  const timer = stageTimers.get(stage);
+  if (timer) window.clearTimeout(timer);
+  stageTimers.delete(stage);
+}
+
+function scheduleAdvance(stage) {
+  clearStageTimer(stage);
+  const items = albums.get(stage.dataset.album) || [];
+  if (items.length < 2 || slideshowPaused()) return;
+  const video = stage.querySelector(".slideshow-photo video");
+  const playingVideo = stage.dataset.kind === "video" && video && !video.hidden;
+  if (!playingVideo) {
+    stageTimers.set(stage, window.setTimeout(() => advanceSlideshow(stage), SLIDE_MS));
+    return;
+  }
+  const arm = () => {
+    if (stage.dataset.kind !== "video" || slideshowPaused()) return;
+    const durationMs = Number.isFinite(video.duration) ? video.duration * 1000 : 8000;
+    const remaining = Math.max(800, durationMs - video.currentTime * 1000 + 400);
+    clearStageTimer(stage);
+    stageTimers.set(stage, window.setTimeout(() => advanceSlideshow(stage), Math.min(30000, remaining)));
+  };
+  if (Number.isFinite(video.duration)) arm();
+  else {
+    video.onloadedmetadata = () => {
+      video.onloadedmetadata = null;
+      arm();
+    };
+    stageTimers.set(stage, window.setTimeout(() => advanceSlideshow(stage), 30000));
+  }
+}
+
 function showSlide(stage, index) {
   const items = albums.get(stage.dataset.album) || [];
   const sourceButton = items[index];
   if (!sourceButton) return;
-  const source = sourceButton.querySelector("img");
   const frame = stage.querySelector(".slideshow-photo");
   const image = frame.querySelector("img");
+  const video = frame.querySelector("video");
   const caption = stage.querySelector("figcaption");
-  image.src = source.src;
-  image.alt = source.alt;
-  if (caption) caption.textContent = source.alt;
+  const kindMark = stage.querySelector(".slide-kind");
+  const sourceCaption = sourceButton.dataset.caption || "";
+  const kind = sourceButton.dataset.kind === "video" ? "video" : "image";
+  stopVideo(video);
+  if (kind === "video") {
+    const source = sourceButton.querySelector("video");
+    image.hidden = true;
+    image.removeAttribute("src");
+    image.alt = "";
+    video.hidden = false;
+    video.controls = false;
+    video.preload = "auto";
+    video.src = source ? source.src : "";
+    video.onended = () => advanceSlideshow(stage);
+    if (!slideshowPaused()) playMuted(video);
+    frame.setAttribute("aria-label", `放大影片：${sourceCaption}`);
+    if (kindMark) kindMark.hidden = false;
+  } else {
+    const source = sourceButton.querySelector("img");
+    video.hidden = true;
+    image.hidden = false;
+    image.src = source.src;
+    image.alt = source.alt;
+    frame.setAttribute("aria-label", `放大：${source.alt}`);
+    if (kindMark) kindMark.hidden = true;
+  }
+  if (caption) caption.textContent = sourceCaption || image.alt;
   frame.dataset.index = String(index);
-  frame.setAttribute("aria-label", `放大：${source.alt}`);
   stage.dataset.index = String(index);
+  stage.dataset.kind = kind;
 }
 
 function advanceSlideshow(stage) {
+  clearStageTimer(stage);
   const items = albums.get(stage.dataset.album) || [];
   if (items.length < 2 || slideshowPaused()) return;
   const current = Number(stage.dataset.index || 0);
   showSlide(stage, nextSlideIndex(items.length, current));
+  scheduleAdvance(stage);
 }
 
-let slideTimer = 0;
-
 function syncSlideshow() {
-  window.clearInterval(slideTimer);
-  slideTimer = 0;
-  if (slideshowPaused()) return;
   const stages = document.querySelectorAll(".slideshow");
-  let canAdvance = false;
   for (const stage of stages) {
-    if ((albums.get(stage.dataset.album) || []).length > 1) {
-      canAdvance = true;
-      break;
-    }
+    clearStageTimer(stage);
+    const video = stage.querySelector(".slideshow-photo video");
+    if (video && slideshowPaused()) video.pause();
   }
-  if (!canAdvance) return;
-  slideTimer = window.setInterval(() => {
-    if (slideshowPaused()) return;
-    for (const stage of document.querySelectorAll(".slideshow")) advanceSlideshow(stage);
-  }, SLIDE_MS);
+  if (slideshowPaused()) return;
+  for (const stage of stages) {
+    if (stage.dataset.kind === "video") {
+      const video = stage.querySelector(".slideshow-photo video");
+      if (video && video.src) playMuted(video);
+    }
+    scheduleAdvance(stage);
+  }
 }
 
 for (const stage of document.querySelectorAll(".slideshow")) {
