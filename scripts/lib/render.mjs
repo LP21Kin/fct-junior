@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { compressPhoto } from "./compress.mjs";
+import { compressPhoto, compressVideo } from "./compress.mjs";
 import { coverImgTag } from "./cover.mjs";
 
 const PRIVACY_TITLE = "溫馨提示";
@@ -16,8 +16,12 @@ const UI_STRINGS = [
   "金句",
   "重點",
   "主題",
-  "撳一張相可以放大",
+  "撳相框可以放大",
   "相簿會自動換相",
+  "輪到影片會靜音播放",
+  "影片",
+  "全螢幕",
+  "段影片",
   "試用示範",
   "清除呢部裝置記住咗嘅密碼",
   "去睇相片",
@@ -81,7 +85,11 @@ function collectStrings(weeks, demoMode) {
     for (const value of [week.title, week.memoryVerse, week.verseRef, week.date, formatDate(week.date)]) {
       if (value) strings.add(value);
     }
-    for (const item of [...week.points, ...week.prayers, ...week.photos.map((photo) => photo.caption)]) {
+    const captions = [
+      ...week.photos.map((photo) => photo.caption),
+      ...(week.videos || []).map((video) => video.caption),
+    ];
+    for (const item of [...week.points, ...week.prayers, ...captions]) {
       if (item) strings.add(item);
     }
   }
@@ -97,31 +105,51 @@ export async function renderSite({ root, weeks, demoMode }) {
   const latest = weeks[0];
   let photoCount = 0;
   let photoBytes = 0;
+  let videoCount = 0;
+  let trimmedVideos = 0;
 
   const albums = [];
   for (const week of weeks) {
-    const figures = [];
-    for (const [index, photo] of week.photos.entries()) {
+    const media = [];
+    for (const photo of week.photos) {
       const compressed = await compressPhoto(photo.bytes, photo.filename);
       photoCount += 1;
       photoBytes += compressed.buffer.length;
-      const src = `data:${compressed.mime};base64,${compressed.buffer.toString("base64")}`;
-      const caption = escapeHtml(photo.caption);
-      figures.push(`<li><figure>
-        <button class="photo-frame photo-button" type="button" data-album="${escapeHtml(week.date)}" data-index="${index}" aria-label="放大：${caption}">
-          <img alt="${caption}" src="${src}" width="640" height="640" loading="lazy" decoding="async">
-        </button>
-        <figcaption>${caption}</figcaption>
-      </figure></li>`);
+      media.push({ kind: "image", mime: compressed.mime, buffer: compressed.buffer, caption: photo.caption });
     }
-    const firstCaption = week.photos[0] ? escapeHtml(week.photos[0].caption) : "";
-    const slideshow = week.photos.length
-      ? `<figure class="slideshow" data-album="${escapeHtml(week.date)}" data-index="0">
-        <button class="photo-frame slideshow-photo" type="button" data-album="${escapeHtml(week.date)}" data-index="0" aria-label="放大：${firstCaption}">
-          <img alt="${firstCaption}" width="640" height="480" decoding="async">
+    for (const video of week.videos || []) {
+      const compressed = await compressVideo(video.bytes, video.filename);
+      videoCount += 1;
+      if (compressed.trimmed) trimmedVideos += 1;
+      media.push({ kind: "video", mime: compressed.mime, buffer: compressed.buffer, caption: video.caption });
+    }
+    const sources = media.map((item, index) => {
+      const caption = escapeHtml(item.caption);
+      const src = `data:${item.mime};base64,${item.buffer.toString("base64")}`;
+      const inner = item.kind === "video"
+        ? `<video muted playsinline preload="none" aria-label="${caption}" src="${src}"></video>`
+        : `<img alt="${caption}" src="${src}" width="960" height="540" decoding="async">`;
+      return `<button class="media-source" type="button" data-album="${escapeHtml(week.date)}" data-index="${index}" data-kind="${item.kind}" data-caption="${caption}" tabindex="-1">${inner}</button>`;
+    }).join("");
+    const first = media[0];
+    const firstCaption = first ? escapeHtml(first.caption) : "";
+    const firstLabel = first?.kind === "video" ? `放大影片：${firstCaption}` : `放大：${firstCaption}`;
+    const kindMark = first?.kind === "video"
+      ? `<p class="slide-kind">影片</p>`
+      : `<p class="slide-kind" hidden>影片</p>`;
+    const countParts = [];
+    if (week.photos.length) countParts.push(`${week.photos.length} 張`);
+    if ((week.videos || []).length) countParts.push(`${week.videos.length} 段影片`);
+    const slideshow = media.length
+      ? `<figure class="slideshow" data-album="${escapeHtml(week.date)}" data-index="0" data-kind="${first.kind}">
+        <button class="photo-frame slideshow-photo" type="button" aria-label="${firstLabel}">
+          <img alt="${first.kind === "video" ? "" : firstCaption}" width="960" height="540" decoding="async">
+          <video muted playsinline preload="none" hidden></video>
         </button>
+        ${kindMark}
         <figcaption>${firstCaption}</figcaption>
-      </figure>`
+      </figure>
+      <div class="media-sources" hidden aria-hidden="true">${sources}</div>`
       : "";
     albums.push(`<article class="album" style="--accent:${week.themeColor}">
       <div class="stripe"></div>
@@ -131,10 +159,9 @@ export async function renderSite({ root, weeks, demoMode }) {
             <h3>${escapeHtml(week.title)}</h3>
             <p>${escapeHtml(formatDate(week.date))}</p>
           </div>
-          <span class="count">${week.photos.length} 張</span>
+          ${countParts.length ? `<span class="count">${countParts.join(" · ")}</span>` : ""}
         </header>
         ${slideshow}
-        <ul class="photo-grid">${figures.join("")}</ul>
       </div>
     </article>`);
   }
@@ -217,7 +244,7 @@ export async function renderSite({ root, weeks, demoMode }) {
     <section id="albums">
       <div class="section-head">
         <h2 class="section-title">${titleIcon("album")}活動回顧</h2>
-        <p>由新到舊。相簿會自動換相，撳一張相可以放大。</p>
+        <p>由新到舊。相簿會自動換相，撳相框可以放大。輪到影片會靜音播放。</p>
       </div>
       ${albums.join("")}
     </section>
@@ -236,12 +263,14 @@ export async function renderSite({ root, weeks, demoMode }) {
     <button class="lightbox-close" type="button" aria-label="關閉">×</button>
     <figure class="lightbox-stage">
       <img id="lightbox-img" alt="">
+      <video id="lightbox-video" controls playsinline muted hidden></video>
       <figcaption id="lightbox-caption"></figcaption>
     </figure>
     <div class="lightbox-toolbar">
       <button id="lightbox-prev" type="button">上一張</button>
       <span id="lightbox-count"></span>
       <button id="lightbox-next" type="button">下一張</button>
+      <button id="lightbox-full" type="button">全螢幕</button>
     </div>
   </div>
   <script>${js}</script>
@@ -252,6 +281,8 @@ export async function renderSite({ root, weeks, demoMode }) {
     html,
     strings: collectStrings(weeks, demoMode),
     photoCount,
+    videoCount,
+    trimmedVideos,
     averageKb: photoCount ? Math.round(photoBytes / photoCount / 1024) : 0,
   };
 }

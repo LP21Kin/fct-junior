@@ -139,8 +139,10 @@ if (driveJson) {
       const summary = await importDriveWeeks({ jsonText: driveJson, destDir: dest });
       weeks = await loadWeeks(dest, { drive: true });
       if (!weeks.length) throw new DriveError("Drive 資料夾入面搵唔到可用嘅週次。今次不會發佈。");
-      console.log(`已從 Google Drive 讀取 ${summary.weeks} 個週次、${summary.photos} 張相片。`);
-      if (summary.capped) console.log("有週次相片多過 20 張，網站只用咗 20 張。");
+      const videoNote = summary.videos ? `、${summary.videos} 段影片` : "";
+      console.log(`已從 Google Drive 讀取 ${summary.weeks} 個週次、${summary.photos} 張相片${videoNote}。`);
+      if (summary.capped) console.log("有週次相片多過 50 張，網站只用咗 50 張。");
+      if (summary.videosCapped) console.log("有週次影片多過 2 段，網站只用咗 2 段。");
     } catch (error) {
       const message = error instanceof DriveError
         ? error.message
@@ -174,7 +176,16 @@ if (!weeks) {
 }
 if (!weeks.length) fail("搵唔到任何一週內容。今次不會發佈。");
 
-const rendered = await renderSite({ root, weeks, demoMode });
+let rendered;
+try {
+  rendered = await renderSite({ root, weeks, demoMode });
+} catch (error) {
+  const message = error instanceof Error && error.message
+    ? error.message
+    : "組合網頁失敗。今次不會發佈。";
+  console.error(scrub(message, secretValues));
+  process.exit(1);
+}
 await rm(buildDir, { recursive: true, force: true });
 await mkdir(path.join(buildDir, "plaintext"), { recursive: true });
 const plaintextPath = path.join(buildDir, "plaintext", "index.html");
@@ -248,4 +259,6 @@ if (verified.status !== 0) {
 const sizeNote = rendered.averageKb >= 80
   ? `平均約 ${rendered.averageKb}KB`
   : "圖畫檔案好細";
-console.log(`已加密網站。處理咗 ${rendered.photoCount} 張圖，${sizeNote}。`);
+const videoNote = rendered.videoCount ? `，同 ${rendered.videoCount} 段影片` : "";
+console.log(`已加密網站。處理咗 ${rendered.photoCount} 張圖${videoNote}，${sizeNote}。`);
+if (rendered.trimmedVideos) console.log("有影片長過 30 秒，網站只用開頭 30 秒。");

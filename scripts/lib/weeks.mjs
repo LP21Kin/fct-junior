@@ -1,7 +1,10 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { isVideoContainer } from "./compress.mjs";
 
 const PHOTO_EXT = /\.(jpe?g|png|webp|gif|heic|heif|svg)$/i;
+const VIDEO_EXT = /\.(mp4|m4v|mov|webm)$/i;
+const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 const PLACEHOLDERS = new Set(["喺度寫今次主題", "喺度寫金句", "YYYY-MM-DD", "經文出處"]);
 
 function fail(message) {
@@ -30,8 +33,9 @@ function asList(value, field, maxItem) {
   return value.map((item, index) => asText(item, `${field} 第 ${index + 1} 項`, maxItem));
 }
 
-async function findPhoto(weekDir, filename) {
-  const candidates = [path.join(weekDir, "photos", filename), path.join(weekDir, filename)];
+async function findMedia(weekDir, filename, folders) {
+  const candidates = folders.map((folder) => path.join(weekDir, folder, filename));
+  candidates.push(path.join(weekDir, filename));
   for (const candidate of candidates) {
     let info;
     try {
@@ -101,8 +105,12 @@ async function loadWeek(weekDir, folderName, options) {
   }
 
   const photos = Array.isArray(data.photos) ? data.photos : [];
-  if (photos.length > 24) {
-    fail(`weeks/${folderName} 相片多過 24 張。請每週揀大約 10 至 20 張。今次不會發佈。`);
+  const videos = Array.isArray(data.videos) ? data.videos : [];
+  if (photos.length > 50) {
+    fail(`weeks/${folderName} 相片多過 50 張。請每週最多放 50 張。今次不會發佈。`);
+  }
+  if (videos.length > 2) {
+    fail(`weeks/${folderName} 影片多過 2 段。請每週最多放 2 段。今次不會發佈。`);
   }
 
   const points = asList(data.points, `weeks/${folderName} 嘅 points`, 60);
@@ -115,7 +123,7 @@ async function loadWeek(weekDir, folderName, options) {
       fail(`相片檔名只可以用 01.jpg 呢種簡單英文名。今次不會發佈。`);
     }
     const caption = asText(photo?.caption, `weeks/${folderName} 第 ${index + 1} 張相嘅 caption`, 24);
-    const filePath = await findPhoto(weekDir, filename);
+    const filePath = await findMedia(weekDir, filename, ["photos"]);
     if (!filePath) fail(`weeks/${folderName} 搵唔到相片 ${filename}。今次不會發佈。`);
     const bytes = await readFile(filePath);
     if (filename.toLowerCase().endsWith(".svg")) {
@@ -125,6 +133,25 @@ async function loadWeek(weekDir, folderName, options) {
       }
     }
     loadedPhotos.push({ filename, caption, bytes });
+  }
+
+  const loadedVideos = [];
+  for (const [index, video] of videos.entries()) {
+    const filename = asText(video?.file, `weeks/${folderName} 第 ${index + 1} 段影片嘅 file`, 80);
+    if (!/^[A-Za-z0-9._-]+$/.test(filename) || filename.includes("..") || !VIDEO_EXT.test(filename)) {
+      fail("影片檔名只可以用 clip.mp4 呢種簡單英文名。請優先用 mp4。今次不會發佈。");
+    }
+    const caption = asText(video?.caption, `weeks/${folderName} 第 ${index + 1} 段影片嘅 caption`, 24);
+    const filePath = await findMedia(weekDir, filename, ["videos"]);
+    if (!filePath) fail(`weeks/${folderName} 搵唔到影片 ${filename}。今次不會發佈。`);
+    const bytes = await readFile(filePath);
+    if (bytes.length > MAX_VIDEO_BYTES) {
+      fail(`weeks/${folderName} 有一段影片大過 80MB。請剪短或者壓細，今次不會發佈。`);
+    }
+    if (!isVideoContainer(bytes)) {
+      fail(`weeks/${folderName} 有一段影片格式唔啱。請改用 mp4。今次不會發佈。`);
+    }
+    loadedVideos.push({ filename, caption, bytes });
   }
 
   return {
@@ -140,5 +167,6 @@ async function loadWeek(weekDir, folderName, options) {
     points,
     prayers: asList(data.prayers, `weeks/${folderName} 嘅 prayers`, 60),
     photos: loadedPhotos,
+    videos: loadedVideos,
   };
 }

@@ -92,7 +92,7 @@ async function expectDemo(label, env, hidden) {
   }
   const html = await readFile(path.join(dir, "dist", "index.html"), "utf8");
   const visible = await stripCoverDataUri(root, html);
-  if (visible.includes("彩虹嘅應許") || visible.includes("data:image") || hidden.some((value) => value && html.includes(value))) {
+  if (visible.includes("彩虹嘅應許") || visible.includes("data:image") || visible.includes("data:video") || hidden.some((value) => value && html.includes(value))) {
     console.error(`${label}：網頁含有未加密內容。`);
     process.exit(1);
   }

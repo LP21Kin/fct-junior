@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = process.env.OUTPUT_DIR || path.join(root, "dist");
 const buildDir = process.env.BUILD_DIR || path.join(root, "build");
 const allowed = new Set(["index.html", "404.html", "robots.txt"]);
-const imageName = /\.(jpe?g|png|gif|webp|heic|heif|svg|avif|bmp|tiff?)$/i;
+const imageName = /\.(jpe?g|png|gif|webp|heic|heif|svg|avif|bmp|tiff?|mp4|m4v|mov|webm)$/i;
 
 function fail(message) {
   console.error(`加密檢查失敗：${message}`);
@@ -33,7 +33,7 @@ for (const name of names) {
   if (!info.isFile()) fail(`${name} 不是檔案。`);
   const text = await readFile(filePath, "utf8");
   const visible = await stripCoverDataUri(root, text);
-  if (visible.includes("data:image")) fail(`${name} 含有未加密圖片。`);
+  if (visible.includes("data:image") || visible.includes("data:video")) fail(`${name} 含有未加密圖片或影片。`);
   if (text.includes("data-plaintext-root")) fail(`${name} 含有未加密頁面。`);
   if (password && password.length >= 4 && text.includes(password)) {
     fail("輸出入面出現咗密碼字串。已停止。");
