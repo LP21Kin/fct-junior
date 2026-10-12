@@ -70,6 +70,52 @@ export async function compressPhoto(buffer, filename = "相片") {
   return { buffer: best, mime: "image/jpeg" };
 }
 
+const DOC_MAX_WIDTH = 2800;
+const DOC_MIN_WIDTH = 1600;
+const DOC_TARGET = 700 * 1024;
+const DOC_HARD_MAX = 800 * 1024;
+
+export async function compressDocument(buffer, filename = "圖片") {
+  if (!buffer || buffer.length < 3 || buffer[0] !== 0xff || buffer[1] !== 0xd8 || buffer[2] !== 0xff) {
+    throw new Error(`${filename} 不是 JPEG。`);
+  }
+  const meta = await sharp(buffer, { failOn: "none", limitInputPixels: 80_000_000, pages: 1 }).metadata();
+  const originalWidth = meta.width || DOC_MAX_WIDTH;
+  let width = Math.min(originalWidth, DOC_MAX_WIDTH);
+  let quality = 80;
+  let best = null;
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const output = await sharp(buffer, { failOn: "none", limitInputPixels: 80_000_000, pages: 1 })
+      .rotate()
+      .resize({ width, withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true, progressive: true })
+      .toBuffer();
+    best = output;
+    if (output.length <= DOC_TARGET) break;
+    if (quality > 64) {
+      quality -= 6;
+      continue;
+    }
+    if (width > DOC_MIN_WIDTH) {
+      width = Math.max(DOC_MIN_WIDTH, Math.round(width * 0.88));
+      continue;
+    }
+    break;
+  }
+
+  if (!best || best.length > DOC_HARD_MAX) {
+    throw new Error(`${filename} 壓縮後仍然太大。`);
+  }
+  const outMeta = await sharp(best).metadata();
+  return {
+    buffer: best,
+    mime: "image/jpeg",
+    width: outMeta.width || width,
+    height: outMeta.height || 0,
+  };
+}
+
 function runCommand(command, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
