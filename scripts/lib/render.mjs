@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { compressPhoto, compressVideo } from "./compress.mjs";
+import { compressDocument, compressPhoto, compressVideo } from "./compress.mjs";
 import { coverImgTag } from "./cover.mjs";
 
 const PRIVACY_TITLE = "溫馨提示";
@@ -8,6 +8,13 @@ const PRIVACY_BODY = "呢度只畀初級團家長睇 💛 私人小天地，唔�
 const FELLOWSHIP_TITLE = "團契金句";
 const FELLOWSHIP_LEAD = "小小門徒・大大榜樣";
 const FELLOWSHIP_VERSE = "「不可叫人小看你年輕，總要在言語、行為、愛心、信心、清潔上，都作信徒的榜樣。」— 提摩太前書 4:12";
+
+const PAGE_NAV = [
+  { id: "home", label: "主頁" },
+  { id: "staff", label: "事奉人員" },
+  { id: "schedule", label: "週會活動表" },
+];
+const EMPTY_PAGE = "未有圖片";
 
 const UI_STRINGS = [
   "今週周會",
@@ -30,6 +37,9 @@ const UI_STRINGS = [
   "每週聚會回顧，只供家長睇",
   "今次未有代禱事項。",
   "fukchuen-junior-v1",
+  "內頁導覽",
+  EMPTY_PAGE,
+  ...PAGE_NAV.map((page) => page.label),
   PRIVACY_TITLE,
   PRIVACY_BODY,
   FELLOWSHIP_TITLE,
@@ -96,7 +106,29 @@ function collectStrings(weeks, demoMode) {
   return [...strings].filter((item) => [...item].length >= 2);
 }
 
-export async function renderSite({ root, weeks, demoMode }) {
+async function posterBody(label, bytes) {
+  if (!bytes) return `<p class="poster-empty">${escapeHtml(EMPTY_PAGE)}</p>`;
+  let compressed;
+  try {
+    compressed = await compressDocument(bytes, label);
+  } catch {
+    return `<p class="poster-empty">${escapeHtml(EMPTY_PAGE)}</p>`;
+  }
+  const src = `data:${compressed.mime};base64,${compressed.buffer.toString("base64")}`;
+  return `<div class="poster-scroll" tabindex="0">
+        <img alt="${escapeHtml(label)}" src="${src}" width="${compressed.width}" height="${compressed.height}" decoding="async">
+      </div>`;
+}
+
+function pageNav() {
+  const links = PAGE_NAV.map((page) => {
+    const current = page.id === "home" ? ` aria-current="page"` : "";
+    return `<a href="#${page.id}" data-page="${page.id}"${current}>${escapeHtml(page.label)}</a>`;
+  }).join("");
+  return `<nav class="site-nav" aria-label="內頁導覽">${links}</nav>`;
+}
+
+export async function renderSite({ root, weeks, demoMode, pages = {} }) {
   const [css, js, coverArt] = await Promise.all([
     readFile(path.join(root, "src/styles.css"), "utf8"),
     readFile(path.join(root, "src/site.js"), "utf8"),
@@ -207,6 +239,16 @@ export async function renderSite({ root, weeks, demoMode }) {
       </div>
     </section>`;
 
+  const staffPoster = await posterBody("事奉人員", pages.staff || null);
+  const schedulePoster = await posterBody("週會活動表", pages.schedule || null);
+  const innerPage = (id, label, poster) => `<div id="page-${id}" class="page-panel" data-page-panel="${id}" hidden>
+      <article class="poster-card" aria-labelledby="page-${id}-title">
+        <div class="stripe" aria-hidden="true"></div>
+        <h2 id="page-${id}-title">${escapeHtml(label)}</h2>
+        ${poster}
+      </article>
+    </div>`;
+
   const html = `<!DOCTYPE html>
 <html lang="zh-Hant-HK">
 <head>
@@ -216,8 +258,10 @@ export async function renderSite({ root, weeks, demoMode }) {
   <title>福泉堂 初級團</title>
   <style>${css}</style>
 </head>
-<body data-plaintext-root="fukchuen-junior-v1">
+<body data-plaintext-root="fukchuen-junior-v1" data-page="home">
   <main class="wrap">
+    ${pageNav()}
+    <div id="page-home" class="page-panel" data-page-panel="home">
     ${banner}
     <header class="hero">
       <div class="hero-banner">
@@ -253,6 +297,9 @@ export async function renderSite({ root, weeks, demoMode }) {
       <p class="prayer-note">嚟自最近一次聚會（${escapeHtml(formatDate(latest.date))}）</p>
       <ul class="prayer-list">${prayers}</ul>
     </section>
+    </div>
+    ${innerPage("staff", "事奉人員", staffPoster)}
+    ${innerPage("schedule", "週會活動表", schedulePoster)}
     <footer class="site-footer">
       <p>福泉堂 初級團</p>
       <p>請唔好公開轉發裡面嘅內容。</p>

@@ -3,7 +3,7 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const imageName = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?|mp4|m4v|mov|webm|mkv)$/i;
-const blockedPrefixes = ["content/", "dist/", "build/", "private-content/"];
+const blockedPrefixes = ["content/", "dist/", "build/", "private-content/", "private-pages/"];
 const coverPath = "src/cover-art.jpg";
 const coverMaxBytes = 600 * 1024;
 const magic = [

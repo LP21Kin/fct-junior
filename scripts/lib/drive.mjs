@@ -205,8 +205,16 @@ function byName(a, b) {
   return String(a.name).localeCompare(String(b.name), "en", { numeric: true, sensitivity: "base" });
 }
 
-function isJpeg(bytes) {
+export function isJpeg(bytes) {
   return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+export function isDriveFolder(file) {
+  return file?.mimeType === FOLDER_MIME;
+}
+
+export function isDriveJpeg(file) {
+  return looksLikeJpeg(file);
 }
 
 function videoExtension(bytes, originalName) {
@@ -234,6 +242,39 @@ async function downloadBytes({ apiUrl, token, fileId, fetchImpl, maxBytes, tooBi
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > maxBytes) throw new DriveError(tooBigMessage);
   return bytes;
+}
+
+export async function openDriveSession({
+  jsonText,
+  fetchImpl = globalThis.fetch,
+  now = Date.now(),
+  env = process.env,
+}) {
+  const account = parseServiceAccount(jsonText);
+  const tokenUrl = loopbackOrDefault(env.DRIVE_TOKEN_URL, TOKEN_AUDIENCE);
+  const apiUrl = loopbackOrDefault(env.DRIVE_API_URL, "https://www.googleapis.com/drive/v3");
+  const token = await accessToken({ account, tokenUrl, fetchImpl, now });
+  return { apiUrl, token, fetchImpl };
+}
+
+export async function listDriveChildren(session, parentId) {
+  return listChildren({
+    apiUrl: session.apiUrl,
+    token: session.token,
+    parentId,
+    fetchImpl: session.fetchImpl,
+  });
+}
+
+export async function downloadDriveFile(session, fileId, maxBytes) {
+  return downloadBytes({
+    apiUrl: session.apiUrl,
+    token: session.token,
+    fileId,
+    fetchImpl: session.fetchImpl,
+    maxBytes,
+    tooBigMessage: "有一張內頁圖片太大。今次不會嵌呢張圖。",
+  });
 }
 
 export async function importDriveWeeks({

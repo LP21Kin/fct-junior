@@ -3,6 +3,7 @@ dist/
 build/
 content/
 private-content/
+private-pages/
 .env
 .env.*
 *.log

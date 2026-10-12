@@ -154,7 +154,7 @@ function nextSlideIndex(length, current, random) {
 }
 
 function slideshowPaused() {
-  return motionQuery.matches || !lightbox.hidden;
+  return motionQuery.matches || !lightbox.hidden || document.body.dataset.page !== "home";
 }
 
 const stageTimers = new WeakMap();
@@ -277,7 +277,44 @@ if (typeof motionQuery.addEventListener === "function") {
   motionQuery.addListener(syncSlideshow);
 }
 
-syncSlideshow();
+const pageIds = new Set(["home", "staff", "schedule"]);
+
+function currentPage() {
+  const id = window.location.hash.replace("#", "");
+  return pageIds.has(id) ? id : "home";
+}
+
+function applyPage(id) {
+  const changed = document.body.dataset.page !== id;
+  document.body.dataset.page = id;
+  for (const panel of document.querySelectorAll("[data-page-panel]")) {
+    panel.hidden = panel.dataset.pagePanel !== id;
+  }
+  for (const link of document.querySelectorAll(".site-nav a")) {
+    if (link.dataset.page === id) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+  if (changed) window.scrollTo(0, 0);
+  syncSlideshow();
+}
+
+function routeFromHash() {
+  applyPage(currentPage());
+}
+
+for (const link of document.querySelectorAll(".site-nav a")) {
+  link.addEventListener("click", (event) => {
+    const id = link.dataset.page;
+    if (!pageIds.has(id)) return;
+    event.preventDefault();
+    if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`);
+    applyPage(id);
+  });
+}
+
+window.addEventListener("hashchange", routeFromHash);
+window.addEventListener("popstate", routeFromHash);
+routeFromHash();
 
 document.getElementById("forget-password")?.addEventListener("click", () => {
   try {

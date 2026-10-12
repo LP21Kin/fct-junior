@@ -48,6 +48,18 @@ const weeks = demoWeeks.map((week) => ({
 const rendered = await renderSite({ root, weeks, demoMode: true });
 const { html, strings } = rendered;
 if (!strings.includes("相簿會自動換相")) fail("加密字串清單未有輪播提示。");
+for (const label of ["主頁", "事奉人員", "週會活動表", "未有圖片"]) {
+  if (!strings.includes(label)) fail(`加密字串清單未有${label}。`);
+  if (!html.includes(label)) fail(`入面頁未有${label}。`);
+}
+if (!html.includes('class="site-nav"') || !html.includes('data-page-panel="staff"') || !html.includes('data-page-panel="schedule"')) {
+  fail("未有三頁導覽。");
+}
+if (!html.includes('href="#home"') || !html.includes('href="#staff"') || !html.includes('href="#schedule"')) {
+  fail("導覽未有三個頁面。");
+}
+if ((html.match(/class="poster-empty"/g) || []).length !== 2) fail("未有圖片時應有兩個空白內頁。");
+if (!siteSource.includes('pageIds = new Set(["home", "staff", "schedule"])')) fail("導覽程式未有三頁。");
 if (strings.includes(lead)) fail("密碼頁公開文字唔應該放入加密對照清單。");
 if (!html.includes("相簿會自動換相，撳相框可以放大。輪到影片會靜音播放。")) fail("相簿說明未有自動換相。");
 if (html.includes("photo-grid") || html.includes("photo-button")) fail("不應再顯示細縮圖。");

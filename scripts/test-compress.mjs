@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
-import { compressPhoto, compressVideo, isVideoContainer } from "./lib/compress.mjs";
+import { compressDocument, compressPhoto, compressVideo, isVideoContainer } from "./lib/compress.mjs";
 
 function fail(message) {
   console.error(message);
@@ -107,5 +107,18 @@ try {
   tooBig = error.message.includes("仍然太大") && error.message.includes("不會發佈");
 }
 if (!tooBig) fail("壓唔細嘅影片應停止發佈。");
+
+const poster = await sharp({
+  create: { width: 2400, height: 1350, channels: 3, background: "#fff6ea" },
+}).jpeg().withMetadata({ exif: { IFD0: { ImageDescription: "SECRET-PAGE-MARKER" } } }).toBuffer();
+const documentImage = await compressDocument(poster, "事奉人員");
+if (documentImage.mime !== "image/jpeg" || documentImage.buffer.includes(Buffer.from("SECRET-PAGE-MARKER"))) {
+  fail("內頁圖片應去掉隱藏資料。");
+}
+if (documentImage.width < 1600 || documentImage.buffer.length > 800 * 1024) {
+  fail("內頁圖片應保持可讀尺寸。");
+}
+const docMeta = await sharp(documentImage.buffer).metadata();
+if (docMeta.exif) fail("內頁圖片仍有 EXIF。");
 
 console.log(`壓縮測試通過：大圖 ${Math.round(input.length / 1024)}KB → ${kb}KB，影片 ${compressedClip.buffer.length} bytes。`);
