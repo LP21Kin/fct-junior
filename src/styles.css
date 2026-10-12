@@ -113,10 +113,11 @@ h1, h2, h3 { line-height: 1.3; }
   margin: 12px;
   border-radius: 18px;
   overflow: auto;
-  max-height: min(82dvh, 1200px);
+  max-height: min(78dvh, 920px);
   background: #fff;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y pinch-zoom;
+  overscroll-behavior: contain;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.9),
     0 0 0 1px color-mix(in srgb, #c9b79a 32%, #f0e6d6);
@@ -124,7 +125,8 @@ h1, h2, h3 { line-height: 1.3; }
 
 .poster-scroll img {
   display: block;
-  width: 100%;
+  width: 2000px;
+  max-width: none;
   height: auto;
 }
 
