@@ -138,9 +138,18 @@ const withPages = await renderSite({
   pages: { staff: staffJpeg, schedule: scheduleJpeg },
 });
 if (withPages.html.includes('class="poster-empty"')) fail("有圖片時不應顯示空白。");
-if ((withPages.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("兩頁都要有可捲動圖片。");
+if ((withPages.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("兩段都要有可捲動圖片。");
 if (!withPages.html.includes(`alt="事奉人員"`) || !withPages.html.includes(`alt="週會活動表"`)) {
   fail("圖片替代文字應只用頁面名稱。");
+}
+const fellowshipAt = withPages.html.indexOf('id="fellowship-title"');
+const scheduleAt = withPages.html.indexOf('alt="週會活動表"');
+const staffAt = withPages.html.indexOf('alt="事奉人員"');
+if (!(fellowshipAt >= 0 && fellowshipAt < scheduleAt && scheduleAt < staffAt)) {
+  fail("主頁順序應為團契金句、週會活動表、事奉人員。");
+}
+if (withPages.html.includes('class="site-nav"') || withPages.html.includes("data-page-panel")) {
+  fail("不應再有獨立內頁。");
 }
 if (withPages.html.includes("staff.jpg") || withPages.html.includes("schedule.jpg")) fail("頁面不應有檔名。");
 const staffUri = withPages.html.match(/alt="事奉人員" src="(data:image\/jpeg;base64,[^"]+)"/);
@@ -245,4 +254,4 @@ if (pageSourceText.includes("SITE_PASSWORD") || pageSourceText.includes(secretFi
   fail("內頁設定不應有密碼或密鑰。");
 }
 
-console.log("內頁測試通過：導覽、本機圖同 Drive 圖都只會嵌進加密頁。");
+console.log("主頁圖片測試通過：本機圖同 Drive 圖都只會嵌進加密主頁。");
