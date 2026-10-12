@@ -132,7 +132,7 @@ https://lp21kin.github.io/fct-junior/
 
 每個資料夾放一張 JPEG。換圖就換走舊嗰張，或者留最新一張（檔名順序最後嘅 JPEG）。唔好改成「知道連結嘅任何人」，亦都唔好公開。
 
-如果已經設定 `DRIVE_SERVICE_ACCOUNT_JSON`，發佈會用同一個服務帳戶去讀呢兩個資料夾。請將「26-27_初級團網站資料」，以及上面兩個子資料夾，分享俾 `fut-junior-reader@fct-junior.iam.gserviceaccount.com`，權限揀 **檢視者**。未分享之前，網站仍然會發佈，不過呢兩頁會顯示「未有圖片」。週會相片嗰邊嘅失敗收埋規則不變。
+如果已經設定 `DRIVE_SERVICE_ACCOUNT_JSON`，發佈會用同一個服務帳戶去讀呢兩個資料夾。請將「26-27_初級團網站資料」，以及上面兩個子資料夾，分享俾服務帳戶 JSON 入面嘅 `client_email`（同週會相片資料夾同一個檢視者）。權限揀 **檢視者**。唔好把呢個電郵或者 JSON 檔寫入公開專案。未分享之前，網站仍然會發佈，不過呢兩頁會顯示「未有圖片」。週會相片嗰邊嘅失敗收埋規則不變。
 
 未設定 Google 金鑰時，建置都會成功。如果想喺自己電腦試睇真圖，將 JPEG 放喺唔會 commit 嘅 `private-pages/staff.jpg` 同 `private-pages/schedule.jpg`（呢個資料夾已加入 `.gitignore`）。冇呢兩個檔，內頁就顯示「未有圖片」。
 
