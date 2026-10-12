@@ -183,19 +183,19 @@ try {
 } catch (error) {
   const message = error instanceof Error && error.message
     ? error.message
-    : "讀取內頁圖片失敗。今次不會發佈。";
+    : "讀取週會活動表或事奉人員圖片失敗。今次不會發佈。";
   console.error(scrub(message, secretValues));
   process.exit(1);
 }
 if (innerPages.staff || innerPages.schedule) {
   const count = Number(Boolean(innerPages.staff)) + Number(Boolean(innerPages.schedule));
-  console.log(`已嵌入 ${count} 張內頁圖片。`);
+  console.log(`已嵌入 ${count} 張主頁圖片（週會活動表、事奉人員）。`);
 }
 if (innerPages.missing.length) {
   const where = driveJson
     ? "請將「26-27_初級團網站資料」入面嘅「2026_事奉人員圖像」同「2026_周會活動行事曆」分享俾服務帳戶（檢視者）。唔好改成知道連結嘅任何人。"
     : "未設定 Google 金鑰，亦未有本機 private-pages 圖片。";
-  console.log(`內頁未有圖片（${innerPages.missing.join("、")}）。${where}今次仍然發佈其餘內容。`);
+  console.log(`主頁未有圖片（${innerPages.missing.join("、")}）。${where}今次仍然發佈其餘內容。`);
 }
 
 let rendered;

@@ -273,7 +273,7 @@ export async function downloadDriveFile(session, fileId, maxBytes) {
     fileId,
     fetchImpl: session.fetchImpl,
     maxBytes,
-    tooBigMessage: "有一張內頁圖片太大。今次不會嵌呢張圖。",
+    tooBigMessage: "有一張週會活動表或事奉人員圖片太大。今次不會嵌呢張圖。",
   });
 }
 

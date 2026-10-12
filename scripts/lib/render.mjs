@@ -9,11 +9,6 @@ const FELLOWSHIP_TITLE = "團契金句";
 const FELLOWSHIP_LEAD = "小小門徒・大大榜樣";
 const FELLOWSHIP_VERSE = "「不可叫人小看你年輕，總要在言語、行為、愛心、信心、清潔上，都作信徒的榜樣。」— 提摩太前書 4:12";
 
-const PAGE_NAV = [
-  { id: "home", label: "主頁" },
-  { id: "staff", label: "事奉人員" },
-  { id: "schedule", label: "週會活動表" },
-];
 const EMPTY_PAGE = "未有圖片";
 
 const UI_STRINGS = [
@@ -37,9 +32,9 @@ const UI_STRINGS = [
   "每週聚會回顧，只供家長睇",
   "今次未有代禱事項。",
   "fukchuen-junior-v1",
-  "內頁導覽",
+  "事奉人員",
+  "週會活動表",
   EMPTY_PAGE,
-  ...PAGE_NAV.map((page) => page.label),
   PRIVACY_TITLE,
   PRIVACY_BODY,
   FELLOWSHIP_TITLE,
@@ -120,12 +115,12 @@ async function posterBody(label, bytes) {
       </div>`;
 }
 
-function pageNav() {
-  const links = PAGE_NAV.map((page) => {
-    const current = page.id === "home" ? ` aria-current="page"` : "";
-    return `<a href="#${page.id}" data-page="${page.id}"${current}>${escapeHtml(page.label)}</a>`;
-  }).join("");
-  return `<nav class="site-nav" aria-label="內頁導覽">${links}</nav>`;
+function posterSection(id, label, poster) {
+  return `<section id="${id}" class="poster-card" aria-labelledby="${id}-title">
+      <div class="stripe" aria-hidden="true"></div>
+      <h2 id="${id}-title">${escapeHtml(label)}</h2>
+      ${poster}
+    </section>`;
 }
 
 export async function renderSite({ root, weeks, demoMode, pages = {} }) {
@@ -239,15 +234,8 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
       </div>
     </section>`;
 
-  const staffPoster = await posterBody("事奉人員", pages.staff || null);
   const schedulePoster = await posterBody("週會活動表", pages.schedule || null);
-  const innerPage = (id, label, poster) => `<div id="page-${id}" class="page-panel" data-page-panel="${id}" hidden>
-      <article class="poster-card" aria-labelledby="page-${id}-title">
-        <div class="stripe" aria-hidden="true"></div>
-        <h2 id="page-${id}-title">${escapeHtml(label)}</h2>
-        ${poster}
-      </article>
-    </div>`;
+  const staffPoster = await posterBody("事奉人員", pages.staff || null);
 
   const html = `<!DOCTYPE html>
 <html lang="zh-Hant-HK">
@@ -258,10 +246,8 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
   <title>福泉堂 初級團</title>
   <style>${css}</style>
 </head>
-<body data-plaintext-root="fukchuen-junior-v1" data-page="home">
+<body data-plaintext-root="fukchuen-junior-v1">
   <main class="wrap">
-    ${pageNav()}
-    <div id="page-home" class="page-panel" data-page-panel="home">
     ${banner}
     <header class="hero">
       <div class="hero-banner">
@@ -272,6 +258,8 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
     </header>
     ${privacyNotice}
     ${fellowshipVerse}
+    ${posterSection("schedule", "週會活動表", schedulePoster)}
+    ${posterSection("staff", "事奉人員", staffPoster)}
     <section class="panel this-week" style="--accent:${latest.themeColor}" aria-labelledby="this-week-title">
       <div class="panel-top">
         <span class="pill">今週周會</span>
@@ -297,9 +285,6 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
       <p class="prayer-note">嚟自最近一次聚會（${escapeHtml(formatDate(latest.date))}）</p>
       <ul class="prayer-list">${prayers}</ul>
     </section>
-    </div>
-    ${innerPage("staff", "事奉人員", staffPoster)}
-    ${innerPage("schedule", "週會活動表", schedulePoster)}
     <footer class="site-footer">
       <p>福泉堂 初級團</p>
       <p>請唔好公開轉發裡面嘅內容。</p>
