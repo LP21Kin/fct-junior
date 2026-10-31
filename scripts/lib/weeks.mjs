@@ -4,7 +4,7 @@ import { isVideoContainer } from "./compress.mjs";
 
 const PHOTO_EXT = /\.(jpe?g|png|webp|gif|heic|heif|svg)$/i;
 const VIDEO_EXT = /\.(mp4|m4v|mov|webm)$/i;
-const MAX_PHOTOS = 60;
+const MAX_PHOTOS = 80;
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 const PLACEHOLDERS = new Set(["喺度寫今次主題", "喺度寫金句", "YYYY-MM-DD", "經文出處"]);
 
