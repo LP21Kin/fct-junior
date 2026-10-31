@@ -57,6 +57,8 @@ jobs:
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
           CONTENT_REPO: ${{ secrets.CONTENT_REPO }}
           CONTENT_READ_TOKEN: ${{ secrets.CONTENT_READ_TOKEN }}
+          # 每週 60 張相加密時會超過 Node 預設 heap（約 4GB）。
+          NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm run build
 
       - name: 檢查輸出沒有明文或圖片
