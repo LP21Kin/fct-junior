@@ -232,7 +232,14 @@ if (!saltFile.salt || !/^[0-9a-fA-F]{32}$/.test(saltFile.salt)) {
 await rm(distDir, { recursive: true, force: true });
 await mkdir(distDir, { recursive: true });
 
+const existingNodeOptions = process.env.NODE_OPTIONS || "";
+const encryptNodeOptions = /(?:^|\s)--max-old-space-size(?:=|\s)/.test(existingNodeOptions)
+  ? existingNodeOptions
+  : `${existingNodeOptions} --max-old-space-size=8192`.trim();
+// -r 把 hex 改成分段產生。8GB 係餘地；單靠調高 heap 仍然唔夠 6 週 × 60 張。
 const encrypt = await run(process.execPath, [
+  "-r",
+  path.join(root, "scripts", "lib", "staticrypt-encrypt.cjs"),
   path.join(root, "node_modules", "staticrypt", "cli", "index.js"),
   plaintextPath,
   "--directory", distDir,
@@ -251,7 +258,7 @@ const encrypt = await run(process.execPath, [
   "--template-toggle-hide", "隱藏密碼",
   "--template-color-primary", "#FFE08A",
   "--template-color-secondary", "#E7F4FF",
-], { STATICRYPT_PASSWORD: password });
+], { STATICRYPT_PASSWORD: password, NODE_OPTIONS: encryptNodeOptions });
 await rm(path.join(buildDir, "plaintext"), { recursive: true, force: true });
 
 if (encrypt.status !== 0) {
