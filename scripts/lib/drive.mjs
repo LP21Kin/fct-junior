@@ -6,7 +6,7 @@ import { isVideoContainer } from "./compress.mjs";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const TOKEN_AUDIENCE = "https://oauth2.googleapis.com/token";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
-const MAX_PHOTOS = 50;
+const MAX_PHOTOS = 60;
 const MAX_VIDEOS = 2;
 const MAX_BYTES = 30 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;

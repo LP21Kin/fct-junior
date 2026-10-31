@@ -4,6 +4,7 @@ import { isVideoContainer } from "./compress.mjs";
 
 const PHOTO_EXT = /\.(jpe?g|png|webp|gif|heic|heif|svg)$/i;
 const VIDEO_EXT = /\.(mp4|m4v|mov|webm)$/i;
+const MAX_PHOTOS = 60;
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 const PLACEHOLDERS = new Set(["喺度寫今次主題", "喺度寫金句", "YYYY-MM-DD", "經文出處"]);
 
@@ -106,8 +107,8 @@ async function loadWeek(weekDir, folderName, options) {
 
   const photos = Array.isArray(data.photos) ? data.photos : [];
   const videos = Array.isArray(data.videos) ? data.videos : [];
-  if (photos.length > 50) {
-    fail(`weeks/${folderName} 相片多過 50 張。請每週最多放 50 張。今次不會發佈。`);
+  if (photos.length > MAX_PHOTOS) {
+    fail(`weeks/${folderName} 相片多過 ${MAX_PHOTOS} 張。請每週最多放 ${MAX_PHOTOS} 張。今次不會發佈。`);
   }
   if (videos.length > 2) {
     fail(`weeks/${folderName} 影片多過 2 段。請每週最多放 2 段。今次不會發佈。`);
