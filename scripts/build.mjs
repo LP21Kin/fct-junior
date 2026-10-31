@@ -142,7 +142,7 @@ if (driveJson) {
       if (!weeks.length) throw new DriveError("Drive 資料夾入面搵唔到可用嘅週次。今次不會發佈。");
       const videoNote = summary.videos ? `、${summary.videos} 段影片` : "";
       console.log(`已從 Google Drive 讀取 ${summary.weeks} 個週次、${summary.photos} 張相片${videoNote}。`);
-      if (summary.capped) console.log("有週次相片多過 50 張，網站只用咗 50 張。");
+      if (summary.capped) console.log("有週次相片多過 60 張，網站只用咗 60 張。");
       if (summary.videosCapped) console.log("有週次影片多過 2 段，網站只用咗 2 段。");
     } catch (error) {
       const message = error instanceof DriveError
