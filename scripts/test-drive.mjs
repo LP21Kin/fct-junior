@@ -147,7 +147,7 @@ function filesFor(mode) {
     { id: "rainbowClip01", parent: "weekRainbow1", name: "clip-01.mp4", mimeType: "video/mp4", bytes: clip },
     { id: "rainbowClip02", parent: "weekRainbow1", name: "clip-02.webm", mimeType: "video/webm", bytes: webm },
   );
-  const photoCount = mode === "cap" ? 65 : 22;
+  const photoCount = mode === "cap" ? 85 : 22;
   for (let index = 1; index <= photoCount; index += 1) {
     files.push({
       id: `shot${String(index).padStart(3, "0")}`,
@@ -425,7 +425,7 @@ try {
     process.exit(1);
   }
   assert(output.includes("已從 Google Drive 讀取 2 個週次、23 張相片、2 段影片。"), "成功訊息不對。");
-  assert(!output.includes("只用咗 60 張"), "22 張不應截斷。");
+  assert(!output.includes("只用咗 80 張"), "22 張不應截斷。");
   assert(!output.includes("只用咗 2 段"), "兩段影片不應截斷。");
   assert(outputIsClean(output), "建置輸出洩漏了秘密或檔名。");
   const html = await readFile(path.join(buildDir, "dist", "index.html"), "utf8");
@@ -457,16 +457,16 @@ try {
     destDir: capDir,
     env: { DRIVE_FOLDER_ID: folderId, DRIVE_TOKEN_URL: capServer.tokenUrl, DRIVE_API_URL: capServer.apiUrl },
   });
-  assert(capSummary.capped, "多過 60 張時應有上限。");
+  assert(capSummary.capped, "多過 80 張時應有上限。");
   assert(capSummary.videosCapped, "多過 2 段影片時應有上限。");
-  assert(capSummary.photos === 61, "相片上限應係 60 張再加其他週次。");
+  assert(capSummary.photos === 81, "相片上限應係 80 張再加其他週次。");
   assert(capSummary.videos === 4, "每週最多 2 段影片。");
   const cappedCraft = JSON.parse(await readFile(path.join(capDir, "weeks", "2026-09-19", "week.json"), "utf8"));
-  assert(cappedCraft.photos.length === 60 && cappedCraft.videos.length === 2, "截斷後應係 60 張相同 2 段影片。");
+  assert(cappedCraft.photos.length === 80 && cappedCraft.videos.length === 2, "截斷後應係 80 張相同 2 段影片。");
   assert(!JSON.stringify(cappedCraft).includes("shot-") && !JSON.stringify(cappedCraft).includes("extra-"), "截斷後不應留下原本檔名。");
   const cappedWeeks = await loadWeeks(capDir, { drive: true });
   const craftWeek = cappedWeeks.find((week) => week.date === "2026-09-19");
-  assert(craftWeek.photos.length === 60 && craftWeek.videos.length === 2, "載入後仍應遵守上限。");
+  assert(craftWeek.photos.length === 80 && craftWeek.videos.length === 2, "載入後仍應遵守上限。");
 } finally {
   await new Promise((resolve) => capServer.server.close(resolve));
   await rm(capDir, { recursive: true, force: true });
@@ -518,11 +518,11 @@ await expectLoadFailure("相片上限", {
   date: "2026-01-02",
   title: "太多相",
   themeColor: "#A9D4F5",
-  photos: Array.from({ length: 61 }, (_, index) => ({
+  photos: Array.from({ length: 81 }, (_, index) => ({
     file: `${String(index + 1).padStart(2, "0")}.jpg`,
     caption: "活動相片",
   })),
-}, "60");
+}, "80");
 await expectLoadFailure("影片上限", {
   date: "2026-01-03",
   title: "太多片",

@@ -1,8 +1,8 @@
 "use strict";
 
 // StatiCrypt 3.5.4 turns every ciphertext byte into its own JavaScript string.
-// A full week cap (6 weeks x 60 photos, plus the allowed videos) is about 200MB
-// of HTML and peaks around 9GB in that loop, above the 8GB heap Actions can spare.
+// A full week cap (6 weeks x 80 photos, plus the allowed videos) is over 200MB
+// of HTML. The old per-byte hex loop peaks above the 8GB heap Actions can spare.
 // This preload only replaces that hex step. AES, HMAC, and the password hash stay
 // the same, so the page still opens with the existing password.
 
