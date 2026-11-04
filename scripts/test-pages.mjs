@@ -188,11 +188,15 @@ const rosterUri = split.stewardHtml.match(/alt="司事輪值表" src="(data:imag
 if (!rosterUri) fail("輪值表圖片未嵌進輪值表頁。");
 if (split.html.includes(rosterUri[1]) || split.html.includes('alt="司事輪值表"')) fail("主頁不應嵌輪值表圖片。");
 if ((split.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("主頁只應有兩張可捲動圖片。");
-if ((split.stewardHtml.match(/class="poster-scroll"/g) || []).length !== 1) fail("輪值表頁應有一張可捲動圖片。");
+if ((split.stewardHtml.match(/class="poster-scroll poster-page"/g) || []).length !== 1) fail("輪值表頁一開就應係全頁大海報。");
 if (!split.stewardHtml.includes("touch-action: pan-x pan-y pinch-zoom")) fail("輪值表頁應可以雙指放大。");
-const staffSection = split.html.slice(split.html.indexOf('id="staff"'), split.html.indexOf("今週周會"));
-if (!staffSection.includes('href="steward.html"') || !staffSection.includes("司事輪值表")) {
-  fail("事奉人員區應有去輪值表嘅掣。");
+const imageAt = split.stewardHtml.indexOf('alt="司事輪值表"');
+const revealButton = split.stewardHtml.indexOf("<button");
+if (imageAt < 0 || (revealButton >= 0 && revealButton < imageAt)) fail("輪值表唔使撳掣先見到圖。");
+const staffSection = split.html.slice(split.html.indexOf('id="staff"'), split.html.indexOf("steward-entry"));
+if (staffSection.includes('href="steward.html"')) fail("事奉人員下面唔好再掛輪值表。");
+if (!split.html.includes('class="poster-card steward-entry" href="steward.html"')) {
+  fail("主頁應有獨立一截去輪值表。");
 }
 if (split.html.includes("steward-roster") || split.stewardHtml.includes("steward-roster")) fail("頁面不應有輪值表檔名。");
 

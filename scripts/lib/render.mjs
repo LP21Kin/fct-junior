@@ -35,6 +35,7 @@ const UI_STRINGS = [
   "事奉人員",
   "週會活動表",
   "司事輪值表",
+  "打開就見到成張表",
   "返回主頁",
   EMPTY_PAGE,
   PRIVACY_TITLE,
@@ -103,7 +104,7 @@ function collectStrings(weeks, demoMode) {
   return [...strings].filter((item) => [...item].length >= 2);
 }
 
-async function posterBody(label, bytes) {
+async function posterBody(label, bytes, { fullPage = false } = {}) {
   if (!bytes) return `<p class="poster-empty">${escapeHtml(EMPTY_PAGE)}</p>`;
   let compressed;
   try {
@@ -112,16 +113,16 @@ async function posterBody(label, bytes) {
     return `<p class="poster-empty">${escapeHtml(EMPTY_PAGE)}</p>`;
   }
   const src = `data:${compressed.mime};base64,${compressed.buffer.toString("base64")}`;
-  return `<div class="poster-scroll" tabindex="0">
+  const scrollClass = fullPage ? "poster-scroll poster-page" : "poster-scroll";
+  return `<div class="${scrollClass}" tabindex="0">
         <img alt="${escapeHtml(label)}" src="${src}" width="${compressed.width}" height="${compressed.height}" decoding="async">
       </div>`;
 }
 
-function posterSection(id, label, poster, lead = "") {
+function posterSection(id, label, poster) {
   return `<section id="${id}" class="poster-card" aria-labelledby="${id}-title">
       <div class="stripe" aria-hidden="true"></div>
       <h2 id="${id}-title">${escapeHtml(label)}</h2>
-      ${lead}
       ${poster}
     </section>`;
 }
@@ -269,8 +270,12 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
 
   const schedulePoster = await posterBody("週會活動表", pages.schedule || null);
   const staffPoster = await posterBody("事奉人員", pages.staff || null);
-  const stewardPoster = await posterBody("司事輪值表", pages.steward || null);
-  const stewardLead = `<p class="poster-actions"><a class="page-link" href="steward.html">司事輪值表</a></p>`;
+  const stewardPoster = await posterBody("司事輪值表", pages.steward || null, { fullPage: true });
+  const stewardEntry = `<a class="poster-card steward-entry" href="steward.html">
+      <div class="stripe" aria-hidden="true"></div>
+      <h2 id="steward-entry-title">司事輪值表</h2>
+      <p>打開就見到成張表</p>
+    </a>`;
 
   const html = pageDocument({
     title: "福泉堂 初級團",
@@ -288,7 +293,8 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
     ${privacyNotice}
     ${fellowshipVerse}
     ${posterSection("schedule", "週會活動表", schedulePoster)}
-    ${posterSection("staff", "事奉人員", staffPoster, stewardLead)}
+    ${posterSection("staff", "事奉人員", staffPoster)}
+    ${stewardEntry}
     <section class="panel this-week" style="--accent:${latest.themeColor}" aria-labelledby="this-week-title">
       <div class="panel-top">
         <span class="pill">今週周會</span>
@@ -340,8 +346,8 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
     title: "司事輪值表 · 福泉堂 初級團",
     css,
     script: forgetPasswordScript,
-    body: `  <main class="wrap">
-    <p class="page-back"><a class="page-link" href="index.html">返回主頁</a></p>
+    body: `  <main class="wrap steward-page">
+    <p class="page-back"><a href="index.html">返回主頁</a></p>
     ${posterSection("steward", "司事輪值表", stewardPoster)}
     <footer class="site-footer">
       <p>福泉堂 初級團</p>
