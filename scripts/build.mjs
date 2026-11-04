@@ -217,9 +217,7 @@ await rm(buildDir, { recursive: true, force: true });
 const plaintextDir = path.join(buildDir, "plaintext");
 await mkdir(plaintextDir, { recursive: true });
 const plaintextPath = path.join(plaintextDir, "index.html");
-const stewardPlaintextPath = path.join(plaintextDir, "steward.html");
 await writeFile(plaintextPath, rendered.html, "utf8");
-await writeFile(stewardPlaintextPath, rendered.stewardHtml, "utf8");
 await writeFile(path.join(buildDir, "check-strings.json"), `${JSON.stringify(rendered.strings, null, 2)}\n`, "utf8");
 const coverArt = await coverImgTag(root);
 const passwordTemplate = (await readFile(path.join(root, "src", "password_template.html"), "utf8")).replace(
@@ -250,7 +248,6 @@ const encrypt = await run(process.execPath, [
   path.join(root, "scripts", "lib", "staticrypt-encrypt.cjs"),
   path.join(root, "node_modules", "staticrypt", "cli", "index.js"),
   plaintextPath,
-  stewardPlaintextPath,
   "--directory", distDir,
   "--config", "false",
   "--salt", saltFile.salt,
@@ -277,9 +274,9 @@ if (encrypt.status !== 0) {
   process.exit(1);
 }
 
-if (!existsSync(path.join(distDir, "index.html")) || !existsSync(path.join(distDir, "steward.html"))) {
+if (!existsSync(path.join(distDir, "index.html")) || existsSync(path.join(distDir, "steward.html"))) {
   await rm(distDir, { recursive: true, force: true });
-  console.error("加密後搵唔到首頁或司事輪值表。不會發佈。");
+  console.error("加密後首頁不齊，或者仍然有獨立輪值表頁。不會發佈。");
   console.error(scrub(`${encrypt.stdout}\n${encrypt.stderr}`, secretValues));
   process.exit(1);
 }

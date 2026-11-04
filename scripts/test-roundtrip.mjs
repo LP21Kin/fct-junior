@@ -73,15 +73,16 @@ try {
     console.error("密碼頁引言未更新。");
     process.exit(1);
   }
-  const steward = await readFile(path.join(outputDir, "steward.html"), "utf8");
-  const stewardVisible = await stripCoverDataUri(root, steward);
-  if (stewardVisible.includes("司事輪值表") || stewardVisible.includes("data:image") || steward.includes("data-plaintext-root")) {
-    console.error("輪值表頁仍可讀到明文或圖片。");
+  if (visible.includes("司事輪值表")) {
+    console.error("主頁輪值表未加密。");
     process.exit(1);
   }
-  if (!steward.includes("記住密碼") || !steward.includes("staticrypt")) {
-    console.error("輪值表頁沒有密碼頁。");
+  try {
+    await readFile(path.join(outputDir, "steward.html"), "utf8");
+    console.error("不應再有獨立輪值表頁。");
     process.exit(1);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
   }
   console.log("加密往返測試通過。");
 } finally {

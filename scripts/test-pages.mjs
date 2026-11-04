@@ -135,11 +135,9 @@ const empty = await renderSite({ root, weeks, demoMode: true });
 if (!empty.html.includes('class="poster-empty"') || empty.html.includes('class="poster-scroll"')) {
   fail("沒有圖片時不應嵌內頁 JPEG。");
 }
-if (!empty.stewardHtml.includes('class="poster-empty"') || empty.stewardHtml.includes('class="poster-scroll"')) {
-  fail("輪值表沒有圖片時不應嵌 JPEG。");
-}
-if (!empty.html.includes('href="steward.html"') || empty.html.includes('alt="司事輪值表"')) {
-  fail("主頁只應有輪值表連結，不應嵌輪值表圖。");
+if ((empty.html.match(/class="poster-empty"/g) || []).length !== 3) fail("三張圖都未有時應有三段提示。");
+if (empty.html.includes('href="steward.html"') || empty.html.includes('alt="司事輪值表"') || empty.stewardHtml) {
+  fail("未有圖時主頁不應有輪值表連結或圖片。");
 }
 
 const withPages = await renderSite({
@@ -148,8 +146,11 @@ const withPages = await renderSite({
   demoMode: false,
   pages: { staff: staffJpeg, schedule: scheduleJpeg },
 });
-if (withPages.html.includes('class="poster-empty"')) fail("有圖片時不應顯示空白。");
-if ((withPages.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("兩段都要有可捲動圖片。");
+if ((withPages.html.match(/class="poster-empty"/g) || []).length !== 1) fail("未傳輪值表時主頁應只係輪值表空白。");
+if ((withPages.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("事奉人員同活動表都要有可捲動圖片。");
+if (withPages.html.includes('href="steward.html"') || withPages.html.includes('alt="司事輪值表"')) {
+  fail("未傳輪值表時不應有連結或圖片。");
+}
 if (!withPages.html.includes(`alt="事奉人員"`) || !withPages.html.includes(`alt="週會活動表"`)) {
   fail("圖片替代文字應只用頁面名稱。");
 }
@@ -162,9 +163,7 @@ if (!(fellowshipAt >= 0 && fellowshipAt < scheduleAt && scheduleAt < staffAt)) {
 if (withPages.html.includes('class="site-nav"') || withPages.html.includes("data-page-panel")) {
   fail("不應再用舊式內頁導覽。");
 }
-if (!withPages.stewardHtml || withPages.html.includes('alt="司事輪值表"')) {
-  fail("有其他圖時主頁仍不應嵌輪值表。");
-}
+if (withPages.stewardHtml) fail("不應再輸出獨立輪值表頁。");
 if (withPages.html.includes("staff.jpg") || withPages.html.includes("schedule.jpg")) fail("頁面不應有檔名。");
 const staffUri = withPages.html.match(/alt="事奉人員" src="(data:image\/jpeg;base64,[^"]+)"/);
 if (!staffUri) fail("事奉人員圖片未嵌進網頁。");
@@ -184,21 +183,18 @@ const split = await renderSite({
   demoMode: false,
   pages: { staff: staffJpeg, schedule: scheduleJpeg, steward: rosterJpeg },
 });
-const rosterUri = split.stewardHtml.match(/alt="司事輪值表" src="(data:image\/jpeg;base64,[^"]+)"/);
-if (!rosterUri) fail("輪值表圖片未嵌進輪值表頁。");
-if (split.html.includes(rosterUri[1]) || split.html.includes('alt="司事輪值表"')) fail("主頁不應嵌輪值表圖片。");
-if ((split.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("主頁只應有兩張可捲動圖片。");
-if ((split.stewardHtml.match(/class="poster-scroll poster-page"/g) || []).length !== 1) fail("輪值表頁一開就應係全頁大海報。");
-if (!split.stewardHtml.includes("touch-action: pan-x pan-y pinch-zoom")) fail("輪值表頁應可以雙指放大。");
-const imageAt = split.stewardHtml.indexOf('alt="司事輪值表"');
-const revealButton = split.stewardHtml.indexOf("<button");
-if (imageAt < 0 || (revealButton >= 0 && revealButton < imageAt)) fail("輪值表唔使撳掣先見到圖。");
-const staffSection = split.html.slice(split.html.indexOf('id="staff"'), split.html.indexOf("steward-entry"));
-if (staffSection.includes('href="steward.html"')) fail("事奉人員下面唔好再掛輪值表。");
-if (!split.html.includes('class="poster-card steward-entry" href="steward.html"')) {
-  fail("主頁應有獨立一截去輪值表。");
+const rosterUri = split.html.match(/alt="司事輪值表" src="(data:image\/jpeg;base64,[^"]+)"/);
+if (!rosterUri) fail("輪值表圖片未嵌進主頁。");
+if (split.stewardHtml || split.html.includes('href="steward.html"')) fail("主頁不應再連去獨立輪值表頁。");
+if ((split.html.match(/class="poster-scroll"/g) || []).length !== 3) fail("主頁應有三張可捲動圖片。");
+if (!split.html.includes("touch-action: pan-x pan-y pinch-zoom")) fail("輪值表應可以雙指放大。");
+const staffImageAt = split.html.indexOf('alt="事奉人員"');
+const rosterImageAt = split.html.indexOf('alt="司事輪值表"');
+const weekLabelAt = split.html.indexOf("今週周會");
+if (!(staffImageAt >= 0 && staffImageAt < rosterImageAt && rosterImageAt < weekLabelAt)) {
+  fail("輪值表應排喺事奉人員同今週周會之間。");
 }
-if (split.html.includes("steward-roster") || split.stewardHtml.includes("steward-roster")) fail("頁面不應有輪值表檔名。");
+if (split.html.includes("steward-roster")) fail("頁面不應有輪值表檔名。");
 
 const localDir = await mkdtemp(path.join(tmpdir(), "fct-pages-"));
 await writeFile(path.join(localDir, "staff.jpg"), otherJpeg);
@@ -335,4 +331,4 @@ if (pageSourceText.includes("SITE_PASSWORD") || pageSourceText.includes(secretFi
   fail("內頁設定不應有密碼或密鑰。");
 }
 
-console.log("主頁圖片測試通過：事奉人員同週會活動表嵌主頁，輪值表只嵌自己嗰頁。");
+console.log("主頁圖片測試通過：週會活動表、事奉人員、司事輪值表都嵌喺主頁。");
