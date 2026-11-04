@@ -30,10 +30,20 @@ export const PAGE_SOURCES = [
     fileId: "1c6F0zn9CI_t5rIAtiTZQxOC3BM1olM5i",
     localNames: ["schedule.jpg", "schedule.jpeg"],
   },
+  {
+    key: "steward",
+    label: "司事輪值表",
+    folderId: "17AWoHBL6sT7vT20mmujIdWseu62DQrbj",
+    folderName: "2026_司事輪值表",
+    fileId: "1lNn9WrGKlWNbNCGsXCYTSc-MR0yQxG73",
+    localNames: ["steward-roster.jpg", "steward-roster.jpeg"],
+  },
 ];
 
-function emptyResult() {
-  return { staff: null, schedule: null, missing: [], usedDrive: false };
+function emptyResult(sources) {
+  const result = { missing: [], usedDrive: false };
+  for (const page of sources) result[page.key] = null;
+  return result;
 }
 
 function byName(a, b) {
@@ -102,7 +112,7 @@ export async function loadInnerPages({
   now = Date.now(),
   sources = PAGE_SOURCES,
 } = {}) {
-  const result = emptyResult();
+  const result = emptyResult(sources);
   const jsonText = String(driveJson || "").trim();
   let session = null;
   if (jsonText) {

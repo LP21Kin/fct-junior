@@ -25,9 +25,14 @@ if (staff?.folderId !== "1A0PJ4OHBINUPHwJEi009AcdVD2-66Pqw" || staff.fileId !== 
 if (schedule?.folderId !== "1AB91AR2KNiXHek-6nOd275A2_3OlS06E" || schedule.fileId !== "1c6F0zn9CI_t5rIAtiTZQxOC3BM1olM5i") {
   fail("週會活動表 Drive 位置不對。");
 }
-if (staff.folderName !== "2026_事奉人員圖像" || schedule.folderName !== "2026_周會活動行事曆") {
+const steward = PAGE_SOURCES.find((page) => page.key === "steward");
+if (steward?.folderId !== "17AWoHBL6sT7vT20mmujIdWseu62DQrbj" || steward.fileId !== "1lNn9WrGKlWNbNCGsXCYTSc-MR0yQxG73") {
+  fail("司事輪值表 Drive 位置不對。");
+}
+if (staff.folderName !== "2026_事奉人員圖像" || schedule.folderName !== "2026_周會活動行事曆" || steward.folderName !== "2026_司事輪值表") {
   fail("內頁資料夾名稱不對。");
 }
+if (!steward.localNames.includes("steward-roster.jpg")) fail("本機輪值表檔名不對。");
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const pem = privateKey.export({ type: "pkcs8", format: "pem" });
@@ -130,6 +135,12 @@ const empty = await renderSite({ root, weeks, demoMode: true });
 if (!empty.html.includes('class="poster-empty"') || empty.html.includes('class="poster-scroll"')) {
   fail("沒有圖片時不應嵌內頁 JPEG。");
 }
+if (!empty.stewardHtml.includes('class="poster-empty"') || empty.stewardHtml.includes('class="poster-scroll"')) {
+  fail("輪值表沒有圖片時不應嵌 JPEG。");
+}
+if (!empty.html.includes('href="steward.html"') || empty.html.includes('alt="司事輪值表"')) {
+  fail("主頁只應有輪值表連結，不應嵌輪值表圖。");
+}
 
 const withPages = await renderSite({
   root,
@@ -149,7 +160,10 @@ if (!(fellowshipAt >= 0 && fellowshipAt < scheduleAt && scheduleAt < staffAt)) {
   fail("主頁順序應為團契金句、週會活動表、事奉人員。");
 }
 if (withPages.html.includes('class="site-nav"') || withPages.html.includes("data-page-panel")) {
-  fail("不應再有獨立內頁。");
+  fail("不應再用舊式內頁導覽。");
+}
+if (!withPages.stewardHtml || withPages.html.includes('alt="司事輪值表"')) {
+  fail("有其他圖時主頁仍不應嵌輪值表。");
 }
 if (withPages.html.includes("staff.jpg") || withPages.html.includes("schedule.jpg")) fail("頁面不應有檔名。");
 const staffUri = withPages.html.match(/alt="事奉人員" src="(data:image\/jpeg;base64,[^"]+)"/);
@@ -158,8 +172,33 @@ const embedded = Buffer.from(staffUri[1].slice("data:image/jpeg;base64,".length)
 const embeddedMeta = await sharp(embedded).metadata();
 if (embeddedMeta.exif || embedded.length < 100) fail("嵌圖應係去掉隱藏資料嘅 JPEG。");
 
+const rosterJpeg = await sharp({
+  create: { width: 70, height: 120, channels: 3, background: { r: 214, g: 84, b: 48 } },
+}).jpeg().toBuffer();
+const newerRoster = await sharp({
+  create: { width: 72, height: 120, channels: 3, background: { r: 232, g: 164, b: 64 } },
+}).jpeg().toBuffer();
+const split = await renderSite({
+  root,
+  weeks,
+  demoMode: false,
+  pages: { staff: staffJpeg, schedule: scheduleJpeg, steward: rosterJpeg },
+});
+const rosterUri = split.stewardHtml.match(/alt="司事輪值表" src="(data:image\/jpeg;base64,[^"]+)"/);
+if (!rosterUri) fail("輪值表圖片未嵌進輪值表頁。");
+if (split.html.includes(rosterUri[1]) || split.html.includes('alt="司事輪值表"')) fail("主頁不應嵌輪值表圖片。");
+if ((split.html.match(/class="poster-scroll"/g) || []).length !== 2) fail("主頁只應有兩張可捲動圖片。");
+if ((split.stewardHtml.match(/class="poster-scroll"/g) || []).length !== 1) fail("輪值表頁應有一張可捲動圖片。");
+if (!split.stewardHtml.includes("touch-action: pan-x pan-y pinch-zoom")) fail("輪值表頁應可以雙指放大。");
+const staffSection = split.html.slice(split.html.indexOf('id="staff"'), split.html.indexOf("今週周會"));
+if (!staffSection.includes('href="steward.html"') || !staffSection.includes("司事輪值表")) {
+  fail("事奉人員區應有去輪值表嘅掣。");
+}
+if (split.html.includes("steward-roster") || split.stewardHtml.includes("steward-roster")) fail("頁面不應有輪值表檔名。");
+
 const localDir = await mkdtemp(path.join(tmpdir(), "fct-pages-"));
 await writeFile(path.join(localDir, "staff.jpg"), otherJpeg);
+await writeFile(path.join(localDir, "steward-roster.jpg"), rosterJpeg);
 await writeFile(path.join(localDir, "notes.txt"), "不要讀取");
 const local = await loadInnerPages({
   root,
@@ -167,6 +206,9 @@ const local = await loadInnerPages({
 });
 if (!local.staff?.equals(otherJpeg) || local.schedule || !local.missing.includes("週會活動表")) {
   fail("本機圖片只應讀指定 JPEG。");
+}
+if (!local.steward?.equals(rosterJpeg) || local.missing.includes("司事輪值表")) {
+  fail("本機應讀到 private-pages/steward-roster.jpg。");
 }
 
 const driveFiles = [
@@ -223,10 +265,12 @@ try {
 const parentFiles = [
   { id: "namedStaff01", parent: "1I6ZMTTBqVvPpaRUXWaVNpytXvE23Wgjy", name: "2026_事奉人員圖像", mimeType: "application/vnd.google-apps.folder" },
   { id: "namedSched01", parent: "1I6ZMTTBqVvPpaRUXWaVNpytXvE23Wgjy", name: "2026_周會活動行事曆", mimeType: "application/vnd.google-apps.folder" },
+  { id: "namedDuty001", parent: "1I6ZMTTBqVvPpaRUXWaVNpytXvE23Wgjy", name: "2026_司事輪值表", mimeType: "application/vnd.google-apps.folder" },
   { id: "viaParent001", parent: "namedStaff01", name: "people.jpg", mimeType: "image/jpeg", bytes: staffJpeg },
   { id: "viaParent002", parent: "namedSched01", name: "plan.jpg", mimeType: "image/jpeg", bytes: scheduleJpeg },
+  { id: "viaParent003", parent: "namedDuty001", name: "261103_ 司事輪值表.jpg", mimeType: "image/jpeg", bytes: rosterJpeg },
 ];
-const parentServer = await startServer(parentFiles, { denyFolders: new Set(["missingStaff1", "missingSched1"]) });
+const parentServer = await startServer(parentFiles, { denyFolders: new Set(["missingStaff1", "missingSched1", "missingDuty01"]) });
 try {
   const loaded = await loadInnerPages({
     root,
@@ -239,13 +283,46 @@ try {
     sources: [
       { ...staff, folderId: "missingStaff1", fileId: "no-such-file" },
       { ...schedule, folderId: "missingSched1", fileId: "no-such-file" },
+      { ...steward, folderId: "missingDuty01", fileId: "no-such-file" },
     ],
   });
-  if (!loaded.staff?.equals(staffJpeg) || !loaded.schedule?.equals(scheduleJpeg)) {
+  if (!loaded.staff?.equals(staffJpeg) || !loaded.schedule?.equals(scheduleJpeg) || !loaded.steward?.equals(rosterJpeg)) {
     fail("子資料夾讀唔到時應改由網站資料夾名稱搵圖。");
   }
 } finally {
   await new Promise((resolve) => parentServer.server.close(resolve));
+}
+
+const rosterFiles = [
+  { id: "dutyKnown001", parent: "dutyFolder001", name: "261103_ 司事輪值表.jpg", mimeType: "image/jpeg", bytes: rosterJpeg },
+  { id: "dutyNewer001", parent: "dutyFolder001", name: "261201_roster.jpg", mimeType: "image/jpeg", bytes: newerRoster },
+];
+const rosterServer = await startServer(rosterFiles);
+try {
+  const preferred = await loadInnerPages({
+    root,
+    driveJson: serviceAccount,
+    env: {
+      PAGE_ASSETS_DIR: path.join(tmpdir(), "fct-pages-none"),
+      DRIVE_TOKEN_URL: rosterServer.tokenUrl,
+      DRIVE_API_URL: rosterServer.apiUrl,
+    },
+    sources: [{ ...steward, folderId: "dutyFolder001", fileId: "dutyKnown001" }],
+  });
+  if (!preferred.steward?.equals(rosterJpeg)) fail("輪值表應優先用指定檔，即使資料夾有更新檔名。");
+  const latest = await loadInnerPages({
+    root,
+    driveJson: serviceAccount,
+    env: {
+      PAGE_ASSETS_DIR: path.join(tmpdir(), "fct-pages-none"),
+      DRIVE_TOKEN_URL: rosterServer.tokenUrl,
+      DRIVE_API_URL: rosterServer.apiUrl,
+    },
+    sources: [{ ...steward, folderId: "dutyFolder001", fileId: "missingFile01" }],
+  });
+  if (!latest.steward?.equals(newerRoster)) fail("找不到指定檔時應用檔名順序最後嘅 JPEG。");
+} finally {
+  await new Promise((resolve) => rosterServer.server.close(resolve));
 }
 
 const secretField = ["private", "key"].join("_");
@@ -254,4 +331,4 @@ if (pageSourceText.includes("SITE_PASSWORD") || pageSourceText.includes(secretFi
   fail("內頁設定不應有密碼或密鑰。");
 }
 
-console.log("主頁圖片測試通過：本機圖同 Drive 圖都只會嵌進加密主頁。");
+console.log("主頁圖片測試通過：事奉人員同週會活動表嵌主頁，輪值表只嵌自己嗰頁。");
