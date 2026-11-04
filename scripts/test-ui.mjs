@@ -48,7 +48,7 @@ const weeks = demoWeeks.map((week) => ({
 const rendered = await renderSite({ root, weeks, demoMode: true });
 const { html, strings } = rendered;
 if (!strings.includes("相簿會自動換相")) fail("加密字串清單未有輪播提示。");
-for (const label of ["團契金句", "週會活動表", "事奉人員", "未有圖片", "司事輪值表"]) {
+for (const label of ["團契金句", "週會活動表", "事奉人員", "未有圖片", "司事輪值表", "打開就見到成張表"]) {
   if (!strings.includes(label)) fail(`加密字串清單未有${label}。`);
   if (!html.includes(label)) fail(`入面頁未有${label}。`);
 }
@@ -56,9 +56,13 @@ if (!strings.includes("返回主頁")) fail("加密字串清單未有返回主�
 if (html.includes('class="site-nav"') || html.includes("data-page-panel") || html.includes('href="#staff"') || html.includes('href="#schedule"')) {
   fail("不應再用舊式內頁導覽。輪值表要用獨立頁面。");
 }
-const staffBlock = html.slice(html.indexOf('id="staff"'), html.indexOf('id="this-week-title"'));
-if (!staffBlock.includes('href="steward.html"') || !staffBlock.includes("司事輪值表")) {
-  fail("事奉人員區應有司事輪值表掣。");
+const staffBlock = html.slice(html.indexOf('id="staff"'), html.indexOf('class="poster-card steward-entry"'));
+if (staffBlock.includes('href="steward.html"') || staffBlock.includes("司事輪值表")) {
+  fail("事奉人員下面唔好再掛輪值表。");
+}
+const entryBlock = html.slice(html.indexOf('class="poster-card steward-entry"'), html.indexOf('id="this-week-title"'));
+if (!entryBlock.includes('href="steward.html"') || !entryBlock.includes("司事輪值表")) {
+  fail("主頁應有獨立一截去輪值表。");
 }
 if (html.includes('alt="司事輪值表"') || html.includes('id="steward"')) {
   fail("輪值表圖片不應嵌在主頁。");
@@ -73,9 +77,10 @@ if (rendered.stewardHtml.includes('class="poster-scroll"')) fail("輪值表未�
 const fellowshipAt = html.indexOf('id="fellowship-title"');
 const scheduleAt = html.indexOf('id="schedule-title"');
 const staffAt = html.indexOf('id="staff-title"');
+const entryAt = html.indexOf('id="steward-entry-title"');
 const weekAt = html.indexOf('id="this-week-title"');
-if (!(fellowshipAt >= 0 && fellowshipAt < scheduleAt && scheduleAt < staffAt && staffAt < weekAt)) {
-  fail("解鎖後順序應為團契金句、週會活動表、事奉人員。");
+if (!(fellowshipAt >= 0 && fellowshipAt < scheduleAt && scheduleAt < staffAt && staffAt < entryAt && entryAt < weekAt)) {
+  fail("解鎖後順序應為團契金句、週會活動表、事奉人員，然後先係獨立嘅司事輪值表。");
 }
 if ((html.match(/class="poster-empty"/g) || []).length !== 2) fail("主頁未有圖片時應有兩段空白提示。");
 if ((rendered.stewardHtml.match(/class="poster-empty"/g) || []).length !== 1) fail("輪值表頁未有圖片時應有一段空白提示。");
