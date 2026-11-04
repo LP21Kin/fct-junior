@@ -34,6 +34,8 @@ const UI_STRINGS = [
   "fukchuen-junior-v1",
   "事奉人員",
   "週會活動表",
+  "司事輪值表",
+  "返回主頁",
   EMPTY_PAGE,
   PRIVACY_TITLE,
   PRIVACY_BODY,
@@ -115,13 +117,44 @@ async function posterBody(label, bytes) {
       </div>`;
 }
 
-function posterSection(id, label, poster) {
+function posterSection(id, label, poster, lead = "") {
   return `<section id="${id}" class="poster-card" aria-labelledby="${id}-title">
       <div class="stripe" aria-hidden="true"></div>
       <h2 id="${id}-title">${escapeHtml(label)}</h2>
+      ${lead}
       ${poster}
     </section>`;
 }
+
+function pageDocument({ title, css, body, script }) {
+  return `<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>${escapeHtml(title)}</title>
+  <style>${css}</style>
+</head>
+<body data-plaintext-root="fukchuen-junior-v1">
+${body}
+  <script>${script}</script>
+</body>
+</html>`;
+}
+
+const forgetPasswordScript = `document.getElementById("forget-password")?.addEventListener("click", () => {
+  try {
+    localStorage.removeItem("staticrypt_passphrase");
+    localStorage.removeItem("staticrypt_expiration");
+  } catch {
+    // 私人模式可能唔俾用 localStorage，仍然會重新載入密碼頁。
+  }
+  const url = new URL(window.location.href);
+  url.hash = "";
+  url.searchParams.set("forget", String(Date.now()));
+  window.location.replace(url.toString());
+});`;
 
 export async function renderSite({ root, weeks, demoMode, pages = {} }) {
   const [css, js, coverArt] = await Promise.all([
@@ -236,18 +269,14 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
 
   const schedulePoster = await posterBody("週會活動表", pages.schedule || null);
   const staffPoster = await posterBody("事奉人員", pages.staff || null);
+  const stewardPoster = await posterBody("司事輪值表", pages.steward || null);
+  const stewardLead = `<p class="poster-actions"><a class="page-link" href="steward.html">司事輪值表</a></p>`;
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-Hant-HK">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>福泉堂 初級團</title>
-  <style>${css}</style>
-</head>
-<body data-plaintext-root="fukchuen-junior-v1">
-  <main class="wrap">
+  const html = pageDocument({
+    title: "福泉堂 初級團",
+    css,
+    script: js,
+    body: `  <main class="wrap">
     ${banner}
     <header class="hero">
       <div class="hero-banner">
@@ -259,7 +288,7 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
     ${privacyNotice}
     ${fellowshipVerse}
     ${posterSection("schedule", "週會活動表", schedulePoster)}
-    ${posterSection("staff", "事奉人員", staffPoster)}
+    ${posterSection("staff", "事奉人員", staffPoster, stewardLead)}
     <section class="panel this-week" style="--accent:${latest.themeColor}" aria-labelledby="this-week-title">
       <div class="panel-top">
         <span class="pill">今週周會</span>
@@ -304,13 +333,26 @@ export async function renderSite({ root, weeks, demoMode, pages = {} }) {
       <button id="lightbox-next" type="button">下一張</button>
       <button id="lightbox-full" type="button">全螢幕</button>
     </div>
-  </div>
-  <script>${js}</script>
-</body>
-</html>`;
+  </div>`,
+  });
+
+  const stewardHtml = pageDocument({
+    title: "司事輪值表 · 福泉堂 初級團",
+    css,
+    script: forgetPasswordScript,
+    body: `  <main class="wrap">
+    <p class="page-back"><a class="page-link" href="index.html">返回主頁</a></p>
+    ${posterSection("steward", "司事輪值表", stewardPoster)}
+    <footer class="site-footer">
+      <p>福泉堂 初級團</p>
+      <button class="text-button" id="forget-password" type="button">清除呢部裝置記住咗嘅密碼</button>
+    </footer>
+  </main>`,
+  });
 
   return {
     html,
+    stewardHtml,
     strings: collectStrings(weeks, demoMode),
     photoCount,
     videoCount,

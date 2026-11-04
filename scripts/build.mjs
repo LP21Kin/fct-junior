@@ -183,19 +183,24 @@ try {
 } catch (error) {
   const message = error instanceof Error && error.message
     ? error.message
-    : "讀取週會活動表或事奉人員圖片失敗。今次不會發佈。";
+    : "讀取週會活動表、事奉人員或司事輪值表圖片失敗。今次不會發佈。";
   console.error(scrub(message, secretValues));
   process.exit(1);
 }
-if (innerPages.staff || innerPages.schedule) {
-  const count = Number(Boolean(innerPages.staff)) + Number(Boolean(innerPages.schedule));
-  console.log(`已嵌入 ${count} 張主頁圖片（週會活動表、事奉人員）。`);
+const pageLabels = [
+  ["schedule", "週會活動表"],
+  ["staff", "事奉人員"],
+  ["steward", "司事輪值表"],
+];
+const embedded = pageLabels.filter(([key]) => innerPages[key]).map(([, label]) => label);
+if (embedded.length) {
+  console.log(`已嵌入 ${embedded.length} 張圖片（${embedded.join("、")}）。`);
 }
 if (innerPages.missing.length) {
   const where = driveJson
-    ? "請將「26-27_初級團網站資料」入面嘅「2026_事奉人員圖像」同「2026_周會活動行事曆」分享俾服務帳戶（檢視者）。唔好改成知道連結嘅任何人。"
+    ? "請將「26-27_初級團網站資料」入面嘅「2026_事奉人員圖像」、「2026_周會活動行事曆」同「2026_司事輪值表」分享俾服務帳戶（檢視者）。如果父資料夾嘅共用冇繼承，子資料夾都要再分享一次。唔好改成知道連結嘅任何人。"
     : "未設定 Google 金鑰，亦未有本機 private-pages 圖片。";
-  console.log(`主頁未有圖片（${innerPages.missing.join("、")}）。${where}今次仍然發佈其餘內容。`);
+  console.log(`有圖片未嵌入（${innerPages.missing.join("、")}）。${where}今次仍然發佈其餘內容。`);
 }
 
 let rendered;
@@ -209,9 +214,12 @@ try {
   process.exit(1);
 }
 await rm(buildDir, { recursive: true, force: true });
-await mkdir(path.join(buildDir, "plaintext"), { recursive: true });
-const plaintextPath = path.join(buildDir, "plaintext", "index.html");
+const plaintextDir = path.join(buildDir, "plaintext");
+await mkdir(plaintextDir, { recursive: true });
+const plaintextPath = path.join(plaintextDir, "index.html");
+const stewardPlaintextPath = path.join(plaintextDir, "steward.html");
 await writeFile(plaintextPath, rendered.html, "utf8");
+await writeFile(stewardPlaintextPath, rendered.stewardHtml, "utf8");
 await writeFile(path.join(buildDir, "check-strings.json"), `${JSON.stringify(rendered.strings, null, 2)}\n`, "utf8");
 const coverArt = await coverImgTag(root);
 const passwordTemplate = (await readFile(path.join(root, "src", "password_template.html"), "utf8")).replace(
@@ -242,6 +250,7 @@ const encrypt = await run(process.execPath, [
   path.join(root, "scripts", "lib", "staticrypt-encrypt.cjs"),
   path.join(root, "node_modules", "staticrypt", "cli", "index.js"),
   plaintextPath,
+  stewardPlaintextPath,
   "--directory", distDir,
   "--config", "false",
   "--salt", saltFile.salt,
@@ -268,9 +277,9 @@ if (encrypt.status !== 0) {
   process.exit(1);
 }
 
-if (!existsSync(path.join(distDir, "index.html"))) {
+if (!existsSync(path.join(distDir, "index.html")) || !existsSync(path.join(distDir, "steward.html"))) {
   await rm(distDir, { recursive: true, force: true });
-  console.error("加密後搵唔到首頁。不會發佈。");
+  console.error("加密後搵唔到首頁或司事輪值表。不會發佈。");
   console.error(scrub(`${encrypt.stdout}\n${encrypt.stderr}`, secretValues));
   process.exit(1);
 }
