@@ -73,7 +73,7 @@ jobs:
             exit 1
           fi
           test -f dist/index.html
-          test -f dist/steward.html
+          test ! -e dist/steward.html
 
       - name: 上傳網頁
         uses: actions/upload-pages-artifact@v3

@@ -6,7 +6,7 @@ import { COVER_ALT, stripCoverDataUri } from "./lib/cover.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = process.env.OUTPUT_DIR || path.join(root, "dist");
 const buildDir = process.env.BUILD_DIR || path.join(root, "build");
-const allowed = new Set(["index.html", "steward.html", "404.html", "robots.txt"]);
+const allowed = new Set(["index.html", "404.html", "robots.txt"]);
 const imageName = /\.(jpe?g|png|gif|webp|heic|heif|svg|avif|bmp|tiff?|mp4|m4v|mov|webm)$/i;
 
 function fail(message) {
@@ -22,7 +22,7 @@ for (const name of names) {
   if (imageName.test(name)) fail(`輸出有圖片檔 ${name}`);
 }
 if (!names.includes("index.html")) fail("沒有加密後的首頁。");
-if (!names.includes("steward.html")) fail("沒有加密後的司事輪值表。");
+if (names.includes("steward.html")) fail("不應再有獨立嘅司事輪值表頁。");
 
 const strings = JSON.parse(await readFile(path.join(buildDir, "check-strings.json"), "utf8"));
 if (!Array.isArray(strings) || strings.length < 5) fail("缺少明文對照清單，無法確認。");
