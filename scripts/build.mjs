@@ -143,7 +143,7 @@ if (driveJson) {
       const videoNote = summary.videos ? `、${summary.videos} 段影片` : "";
       console.log(`已從 Google Drive 讀取 ${summary.weeks} 個週次、${summary.photos} 張相片${videoNote}。`);
       if (summary.capped) console.log("有週次相片多過 80 張，網站只用咗 80 張。");
-      if (summary.videosCapped) console.log("有週次影片多過 2 段，網站只用咗 2 段。");
+      if (summary.videosCapped) console.log("有週次影片多過 3 段，網站只用咗 3 段。");
     } catch (error) {
       const message = error instanceof DriveError
         ? error.message
